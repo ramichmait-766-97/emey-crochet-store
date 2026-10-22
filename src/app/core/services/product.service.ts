@@ -3,10 +3,8 @@ import { FirebaseService } from './firebase.service';
 import { Injectable, inject } from '@angular/core';
 import { collection, query, where } from 'firebase/firestore';
 import { Observable, Subject, catchError, map, of, shareReplay, startWith, switchMap } from 'rxjs';
-import { environment } from '../../../environments/environment';
 import { Product } from '../models/product.model';
 import { productImageSrc } from '../utils/product-image';
-import { SEED_PRODUCTS } from './seed-products';
 
 @Injectable({ providedIn: 'root' })
 export class ProductService {
@@ -36,10 +34,6 @@ export class ProductService {
   }
 
   private createProductStream(): Observable<Product[]> {
-    if (environment.demoMode) {
-      return of(SEED_PRODUCTS).pipe(shareReplay(1));
-    }
-
     const productsQuery = query(
       collection(this.firestore, 'products'),
       where('active', '==', true),

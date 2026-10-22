@@ -4,8 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { DATABASE_ID, initAdminApp } from './init-admin-app.mjs';
 
-initAdminApp();
-const db = getFirestore(DATABASE_ID);
+import { matchProduct, normalizeIdentity } from './seed-product-matching.mjs';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const productsDir = join(repoRoot, 'src', 'assets', 'products');
@@ -200,18 +199,107 @@ const products = [
   },
 ];
 
-async function seed() {
-  // Validate every local image before performing any writes.
-  for (const product of products) {
-    const size = readFileSync(join(productsDir, product.file)).byteLength;
-    if (size > MAX_DOC_BYTES) throw new Error(`${product.file} exceeds the 700 KB image limit.`);
-  }
-  console.log(`Seeding ${products.length} products into Firestore database "${DATABASE_ID}"...`);
+// New items remain drafts until the owner supplies real prices and stock.
+products.push(
+  {
+    id: 'P015',
+    slug: 'multicolor-granny-square-bag',
+    name: 'Multicolor Granny-Square Handbag',
+    category: 'Bags & Accessories',
+    description:
+      'A colorful floral granny-square handbag with burgundy edging and strap and gold-tone clasps.',
+    file: 'multicolor-granny-square-bag.webp',
+    colors: ['Multicolor', 'Burgundy'],
+  },
+  {
+    id: 'P016',
+    slug: 'white-crochet-tops-collection',
+    name: 'White Crochet Tops Collection',
+    category: 'Apparel',
+    description:
+      'A collection preview of nine distinct white crochet top designs. Confirm the individual design and availability before publishing.',
+    file: 'white-crochet-tops-collection.webp',
+    colors: ['White'],
+  },
+  {
+    id: 'P017',
+    slug: 'pink-floral-crochet-coat',
+    name: 'Pink Floral Crochet Coat',
+    category: 'Apparel',
+    description:
+      'A long cream crochet coat featuring pink and burgundy floral granny squares, a waist tie and pockets.',
+    file: 'pink-floral-crochet-coat.webp',
+    colors: ['Cream', 'Pink', 'Burgundy'],
+  },
+  {
+    id: 'P018',
+    slug: 'black-multicolor-crochet-coat',
+    name: 'Black Multicolor Crochet Coat',
+    category: 'Apparel',
+    description:
+      'A long open-front black crochet coat with bright multicolored granny-square motifs.',
+    file: 'black-multicolor-crochet-coat.webp',
+    colors: ['Black', 'Multicolor'],
+  },
+  {
+    id: 'P019',
+    slug: 'pink-rose-bag',
+    name: 'Pink Rose Crochet Handbag',
+    category: 'Bags & Accessories',
+    description:
+      'A vivid pink handbag shaped with layered crochet rose petals and a round peach-colored handle.',
+    file: 'pink-rose-bag.webp',
+    colors: ['Pink', 'Peach'],
+  },
+);
+for (const product of products.slice(14)) {
+  Object.assign(product, {
+    price: 0,
+    quantity: 0,
+    active: false,
+    bestSeller: false,
+    newArrival: true,
+  });
+}
 
-  const settingsRef = db.doc('siteSettings/public');
-  if (!(await settingsRef.get()).exists)
-    await settingsRef.set(
-      {
+async function seed() {
+  const prepared = products.map(({ file, ...fields }) => {
+    const imageData = readFileSync(join(productsDir, file));
+    if (imageData.byteLength > MAX_DOC_BYTES)
+      throw new Error(`${file} exceeds the 700 KiB image limit.`);
+    return { fields, imageData };
+  });
+  for (const key of ['id', 'slug', 'name']) {
+    const identities = prepared.map(({ fields }) => normalizeIdentity(fields[key]));
+    if (new Set(identities).size !== identities.length)
+      throw new Error(`Duplicate ${key} in seed manifest.`);
+  }
+  if (process.argv.includes('--dry-run')) {
+    console.log(
+      `Local validation passed: ${prepared.length} products, all images under 700 KiB. No database access or writes.`,
+    );
+    console.log('P014: enhanced baby-set image. P015-P019: inactive drafts if missing.');
+    return;
+  }
+  initAdminApp();
+  const db = getFirestore(DATABASE_ID);
+  console.log(`Seeding ${prepared.length} products into Firestore database "${DATABASE_ID}"...`);
+  const result = await db.runTransaction(async (transaction) => {
+    // Read and match the entire catalog before any writes. The transaction also
+    // prevents concurrent seed runs from inserting duplicates under different IDs.
+    const catalog = await transaction.get(db.collection('products'));
+    const settingsRef = db.doc('siteSettings/public');
+    const settings = await transaction.get(settingsRef);
+    const documents = catalog.docs.map((doc) => ({ id: doc.id, data: doc.data(), ref: doc.ref }));
+    const plan = prepared.map((item) => ({
+      ...item,
+      existing: matchProduct(item.fields, documents),
+    }));
+    const targets = plan.map((item) => item.existing?.id ?? item.fields.id);
+    if (new Set(targets).size !== targets.length)
+      throw new Error('Multiple seed entries resolve to the same catalog document.');
+    if (!settings.exists) {
+      transaction.create(settingsRef, {
         storeName: 'Emey Crochet Store',
         currency: 'USD',
         memberDiscountPercent: 10,
@@ -226,65 +314,58 @@ async function seed() {
           },
         ],
         modifiedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
-
-  for (const product of products) {
-    const imagePath = join(productsDir, product.file);
-    const imageData = readFileSync(imagePath);
-
-    if (imageData.byteLength > MAX_DOC_BYTES) {
-      throw new Error(
-        `${product.file} is ${imageData.byteLength} bytes. Firestore documents must stay under 1 MB.`,
-      );
-    }
-
-    const { file, ...fields } = product;
-    const ref = db.doc(`products/${product.id}`);
-    const existing = await ref.get();
-    if (existing.exists) {
-      await ref.update({
-        imageData,
-        imageContentType: 'image/webp',
-        modifiedAt: FieldValue.serverTimestamp(),
       });
-      console.log(`  ${product.id}: image refreshed; existing catalog fields preserved.`);
-      continue;
     }
-    await db.doc(`products/${product.id}`).set(
-      {
-        ...fields,
-        active: true,
-        gallery: [],
-        imageContentType: 'image/webp',
-        imageData,
-        createdAt: FieldValue.serverTimestamp(),
-        modifiedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
+    return plan.map(({ fields, imageData, existing }) => {
+      const ref = existing?.ref ?? db.doc(`products/${fields.id}`);
+      if (existing) {
+        if (
+          !Buffer.isBuffer(existing.data.imageData) ||
+          !existing.data.imageData.equals(imageData) ||
+          existing.data.imageContentType !== 'image/webp'
+        ) {
+          transaction.update(ref, {
+            imageData,
+            imageContentType: 'image/webp',
+            modifiedAt: FieldValue.serverTimestamp(),
+          });
+        }
+      } else {
+        transaction.create(ref, {
+          ...fields,
+          active: fields.active ?? true,
+          gallery: [],
+          imageContentType: 'image/webp',
+          imageData,
+          createdAt: FieldValue.serverTimestamp(),
+          modifiedAt: FieldValue.serverTimestamp(),
+        });
+      }
+      return { ref, imageData, existing: !!existing };
+    });
+  });
+  for (const { ref, imageData, existing } of result) {
+    const saved = (await ref.get()).data();
+    if (!Buffer.isBuffer(saved?.imageData) || !saved.imageData.equals(imageData)) {
+      throw new Error(`Image read-back verification failed for ${ref.id}`);
+    }
+    console.log(
+      `  ${ref.id}: ${existing ? 'matched existing product; catalog fields preserved' : 'created'}; image verified.`,
     );
-
-    console.log(`  ${product.id} ${product.name} (${imageData.byteLength} bytes from ${file})`);
   }
-
-  for (const product of products) {
-    const saved = (await db.doc(`products/${product.id}`).get()).data();
-    if (
-      !Buffer.isBuffer(saved?.imageData) ||
-      !saved.imageData.equals(readFileSync(join(productsDir, product.file)))
-    ) {
-      throw new Error(`Image read-back verification failed for ${product.id}`);
-    }
-  }
-
-  console.log(`Done. Products are in project emey-crochet-store / database ${DATABASE_ID}.`);
+  console.log(
+    `Done. ${result.filter((x) => !x.existing).length} created; ${result.filter((x) => x.existing).length} existing. New drafts need prices, stock and activation in /admin.`,
+  );
 }
 
 try {
   await seed();
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(message);
-  process.exit(1);
+  console.error(
+    message.includes('Could not load the default credentials')
+      ? 'Firebase sign-in is required. Run npm run firebase:login, then npm run products:seed. You can also configure GOOGLE_APPLICATION_CREDENTIALS for an authorized service account.'
+      : message,
+  );
+  process.exitCode = 1;
 }

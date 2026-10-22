@@ -1,4 +1,5 @@
-import { Product } from '../models/product.model';
+// Test fixtures only. The application catalog comes from Firestore.
+import { Product } from '../../src/app/core/models/product.model';
 
 type SeedProduct = Omit<Product, 'gallery' | 'colors'> & {
   gallery?: string[];
@@ -11,7 +12,7 @@ const product = (value: SeedProduct): Product => ({
   colors: value.colors ?? [],
 });
 
-export const SEED_PRODUCTS: Product[] = [
+export const TEST_PRODUCTS: Product[] = [
   product({
     id: 'P001',
     slug: 'red-crop-top-shorts-set',

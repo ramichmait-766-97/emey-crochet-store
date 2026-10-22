@@ -34,12 +34,6 @@
     </button>
   </div>
 
-  @if (environment.demoMode) {
-    <div class="demo">
-      Demo mode is active. Browsing works normally, but admin writes are intentionally disabled
-      until Firebase is configured.
-    </div>
-  }
   @if (admin.loadError()) {
     <p class="message error" role="alert">{{ admin.loadError() }}</p>
   }
@@ -143,7 +137,7 @@
           <button
             class="btn primary wide"
             type="button"
-            [disabled]="saving || environment.demoMode"
+            [disabled]="saving"
             (click)="saveProduct()"
           >
             {{ saving ? 'Saving…' : 'Save product' }}
@@ -197,12 +191,7 @@
             </button>
           </div>
         }
-        <button
-          class="btn primary"
-          type="button"
-          [disabled]="saving || environment.demoMode"
-          (click)="saveSettings()"
-        >
+        <button class="btn primary" type="button" [disabled]="saving" (click)="saveSettings()">
           {{ saving ? 'Saving…' : 'Save settings' }}
         </button>
       </div>

@@ -40,6 +40,12 @@ Functions and requires Blaze. Prefer `npm run firebase` for this store.
 
 ## Shopping and ordering
 
+- Storefront and admin catalogs use Firestore realtime listeners only. There is
+  no bundled demo catalog or static product fallback. Public pages query
+  `products` with `active == true` in `emey-crochet-store / maindb`; admin sees
+  hidden products too. Seeding does not require redeploying the storefront.
+- Newly seeded P015-P019 start hidden. In `/admin`, enter their actual prices
+  and stock, enable Active, and save to make them appear publicly.
 - Home collection links open URL-driven shop filters; category, search and sorting
   survive refresh and browser history. New arrivals and bestseller shortcuts filter
   the matching products.
@@ -82,8 +88,30 @@ npm run products:seed
 npm run users:seed
 ```
 
-Product seed verifies all 14 local image files by read-back, preserving existing
-prices, stock and settings. User seed targets the configured admin/client emails;
+For a local-disk seed run from the shared project folder, use `npm run productseed`.
+It copies the seed scripts into `C:\firebase-seed\functions\scripts`, the Functions
+dependency manifests into `C:\firebase-seed\functions`, and product WebP images into
+`C:\firebase-seed\src\assets\products`, installs local dependencies when needed,
+then seeds from that copy. It leaves unrelated destination files and credentials
+in place. Repeated runs refresh the copied source files and reuse installed dependencies.
+Use `npm run productseed -- --dry-run` to validate the local copy without database writes.
+
+If Firebase credentials are missing, run `npm run firebase:login` once, complete
+the browser sign-in with an account authorized for this project, then retry.
+
+Product seed includes 19 entries and verifies every image by read-back, preserving
+existing prices, stock, publication status and settings. It matches by fixed ID,
+normalized slug or name; ambiguous matches or conflicting IDs abort before writes.
+Repeated runs refresh changed images without creating additional products. Existing
+duplicates must be resolved manually; the script does not delete products.
+All 19 product images use the enhanced boutique backgrounds. P015–P019 are created as inactive drafts
+with zero price and stock; set actual prices/stock in `/admin` before activation.
+P016 is a nine-design tops collection preview, not nine separately purchasable items.
+Images are committed as WebP assets under 700 KiB; the original PNG outputs are
+not needed to run the seed. The launcher uses supported Node on PATH, or the
+installed Codex Node runtime when the system Node is too old.
+Use `npm run products:seed -- --dry-run` for local image/manifest validation without
+connecting to Firestore. User seed targets the configured admin/client emails;
 set SEED_ADMIN_PASSWORD and SEED_CLIENT_PASSWORD in the process environment first.
 It creates or updates accounts, resets their passwords to the supplied values,
 and verifies role claims. Passwords are never written to Firestore or source.
@@ -97,4 +125,7 @@ npm run build:prod
 ```
 
 See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the code map, schema, verification
-status and remaining boundaries. `ENGINEERING_NOTES.md` is historical.
+status and remaining boundaries. Local original photos, full-size generated PNGs
+and image-generation prompts are retained under `output/product-photos/`, which
+is ignored by Git and excluded from the deployment copy. Commit the optimized
+`src/assets/products/*.webp` files to share or deploy the enhanced images.

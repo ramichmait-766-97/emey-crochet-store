@@ -37,7 +37,7 @@ try {
     Write-Host "Syncing project to $destination"
     New-Item -ItemType Directory -Force -Path $destination | Out-Null
     & robocopy.exe $source $destination /MIR /R:2 /W:1 /NFL /NDL /NJH /NJS `
-        /XD node_modules .git .angular dist .firebase functions `
+        /XD node_modules .git .angular dist .firebase output .artifacts (Join-Path $source 'functions\lib') `
         /XF .env '.env.*' 'serviceAccount*.json' '*service-account*.json' '*.log' .firebaserc .firebase-dependencies
     if ($LASTEXITCODE -ge 8) { throw "Project copy failed (robocopy exit $LASTEXITCODE)." }
 

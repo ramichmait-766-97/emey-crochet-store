@@ -18,35 +18,35 @@ function load(file) {
 }
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const { filterCatalog, parseCatalogFilters } = load(resolve(root, 'src/app/core/utils/catalog.ts'));
-const { SEED_PRODUCTS } = load(resolve(root, 'src/app/core/services/seed-products.ts'));
+const { TEST_PRODUCTS } = load(resolve(root, 'scripts/fixtures/catalog-products.ts'));
 const { prepareOrderRequest } = load(resolve(root, 'src/app/core/utils/order-request.ts'));
 const parse = (params) => parseCatalogFilters(new URLSearchParams(params));
-test('all home collection links return the correct seeded pieces', () => {
+test('all home collection links return the matching fixture products', () => {
   for (const [category, count] of [
     ['Apparel', 7],
     ['Bags & Accessories', 3],
     ['Home Decor', 3],
     ['Keychains', 1],
   ]) {
-    assert.equal(filterCatalog(SEED_PRODUCTS, parse({ category })).length, count);
+    assert.equal(filterCatalog(TEST_PRODUCTS, parse({ category })).length, count);
   }
-  assert.equal(filterCatalog(SEED_PRODUCTS, parse({})).length, 14);
+  assert.equal(filterCatalog(TEST_PRODUCTS, parse({})).length, 14);
 });
 test('search, filters and sorting compose without mutating source', () => {
-  const original = SEED_PRODUCTS.map((p) => p.id);
+  const original = TEST_PRODUCTS.map((p) => p.id);
   const results = filterCatalog(
-    SEED_PRODUCTS,
+    TEST_PRODUCTS,
     parse({ category: 'Bags & Accessories', q: 'cream', sort: 'price-asc' }),
   );
   assert.ok(results.length > 0);
   assert.ok(results.every((p) => p.category === 'Bags & Accessories'));
-  const sorted = filterCatalog(SEED_PRODUCTS, parse({ sort: 'price-asc' }));
+  const sorted = filterCatalog(TEST_PRODUCTS, parse({ sort: 'price-asc' }));
   assert.ok(sorted.every((p, i) => i === 0 || p.price >= sorted[i - 1].price));
   assert.deepEqual(
-    SEED_PRODUCTS.map((p) => p.id),
+    TEST_PRODUCTS.map((p) => p.id),
     original,
   );
-  assert.equal(filterCatalog(SEED_PRODUCTS, parse({ q: 'no such product zzz' })).length, 0);
+  assert.equal(filterCatalog(TEST_PRODUCTS, parse({ q: 'no such product zzz' })).length, 0);
 });
 test('invalid filter values recover to usable defaults', () => {
   assert.deepEqual(parse({ category: 'bad', sort: 'bad' }), {
@@ -70,7 +70,7 @@ const site = {
   memberDiscountPercent: 10,
   contacts: [{ type: 'whatsapp', label: 'WhatsApp', value: '+15555550123', enabled: true }],
 };
-const lines = [{ product: { ...SEED_PRODUCTS[0], price: 12.35 }, quantity: 3 }];
+const lines = [{ product: { ...TEST_PRODUCTS[0], price: 12.35 }, quantity: 3 }];
 test('request estimate applies rounded member discount and includes each item', () => {
   const result = prepareOrderRequest(lines, contact, site, true);
   assert.equal(result.subtotal, 37.05);
@@ -97,7 +97,7 @@ test('does not prepare requests for disabled, missing or placeholder WhatsApp co
 
 test('new arrivals and bestseller shortcuts select matching products', () => {
   for (const collection of ['new', 'bestsellers']) {
-    const items = filterCatalog(SEED_PRODUCTS, parse({ collection }));
+    const items = filterCatalog(TEST_PRODUCTS, parse({ collection }));
     assert.ok(items.length > 0);
     assert.ok(items.every((p) => (collection === 'new' ? p.newArrival : p.bestSeller)));
   }

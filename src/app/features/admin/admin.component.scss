@@ -33,15 +33,11 @@
   color: white;
   background: var(--ink);
 }
-.demo,
 .message {
   margin: 1rem 0;
   padding: 1rem;
   font-size: 0.82rem;
   border-radius: 12px;
-}
-.demo {
-  background: #fff0c9;
 }
 .message.error {
   color: #8a3e34;

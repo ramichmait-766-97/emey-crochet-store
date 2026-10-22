@@ -1,5 +1,5 @@
 node_modules
-.angular/cache/
+.angular/
 dist
 .firebase
 .firebaserc
@@ -11,3 +11,4 @@ serviceAccount*.json
 *service-account*.json
 *.log
 .artifacts/
+output/

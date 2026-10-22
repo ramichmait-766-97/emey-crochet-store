@@ -14,7 +14,6 @@ import { Product } from '../../core/models/product.model';
 import { ContactMethod, SiteSettings } from '../../core/models/site-settings.model';
 import { AdminStoreService, ProductDraft } from '../../core/services/admin-store.service';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
-import { environment } from '../../../environments/environment';
 import { productImageSrc } from '../../core/utils/product-image';
 
 @Component({
@@ -25,7 +24,6 @@ import { productImageSrc } from '../../core/utils/product-image';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminComponent implements OnInit {
-  readonly environment = environment;
   readonly categories = PRODUCT_CATEGORIES;
   readonly admin = inject(AdminStoreService);
   readonly siteSettings = inject(SiteSettingsService);

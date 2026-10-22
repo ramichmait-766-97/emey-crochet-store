@@ -14,8 +14,12 @@
         ]
       },
       {
-        "source": "**/*.@(js|css|woff2|webp|png|jpg|jpeg|svg)",
+        "source": "**/*.@(js|css|woff2)",
         "headers": [{ "key": "Cache-Control", "value": "public,max-age=31536000,immutable" }]
+      },
+      {
+        "source": "**/*.@(webp|png|jpg|jpeg|svg)",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=0,must-revalidate" }]
       }
     ]
   },

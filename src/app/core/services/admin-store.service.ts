@@ -4,11 +4,9 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Bytes, collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Observable, catchError, map, of, shareReplay } from 'rxjs';
 import { PRODUCT_CATEGORIES } from '../constants/store.constants';
-import { environment } from '../../../environments/environment';
 import { Product } from '../models/product.model';
 import { SiteSettings } from '../models/site-settings.model';
 import { MAX_PRODUCT_IMAGE_BYTES, productImageSrc } from '../utils/product-image';
-import { SEED_PRODUCTS } from './seed-products';
 
 export type ProductDraft = Omit<Product, 'createdAt' | 'modifiedAt'> & {
   createdAt?: unknown;
@@ -37,9 +35,6 @@ export class AdminStoreService {
       Number(draft.quantity) < 0
     ) {
       throw new Error('Enter a valid price and a whole stock quantity of zero or more.');
-    }
-    if (environment.demoMode) {
-      throw new Error('Persistent writes are disabled while demo mode is enabled.');
     }
 
     const id = this.normalizeId(draft.id);
@@ -87,9 +82,6 @@ export class AdminStoreService {
       if (contact.url && !/^(https?:\/\/|mailto:|tel:)/i.test(contact.url))
         throw new Error('Contact links must begin with https://, mailto: or tel:.');
     }
-    if (environment.demoMode) {
-      throw new Error('Persistent writes are disabled while demo mode is enabled.');
-    }
 
     await setDoc(
       doc(this.firestore, 'siteSettings/public'),
@@ -105,10 +97,6 @@ export class AdminStoreService {
   }
 
   private createProductStream(): Observable<Product[]> {
-    if (environment.demoMode) {
-      return of(SEED_PRODUCTS).pipe(shareReplay(1));
-    }
-
     return collectionData<Product>(collection(this.firestore, 'products'), { idField: 'id' }).pipe(
       map((products) => {
         this.loadError.set('');

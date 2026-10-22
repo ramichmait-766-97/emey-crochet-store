@@ -43,14 +43,21 @@ AngularFire was removed after reproducing a live mixed-SDK Firestore error.
 
 ## Firebase/data
 
-Project emey-crochet-store; named database maindb; live mode (demoMode=false).
+Project emey-crochet-store; named database maindb. Catalogs use Firestore only;
+no demo mode or static catalog exists in application source. Test fixtures live
+under scripts/fixtures and are excluded from the app compilation.
 Authentication is project-wide, not scoped to a named database. Native API/realtime
 listeners are required. No billing-plan changes were made or authorized.
 
-- products/P001..P014: id, slug, name, category, description, price, quantity,
+- products/P001..P019: id, slug, name, category, description, price, quantity,
   colors[], gallery[], bestSeller, newArrival, active, timestamps, imageData bytes,
-  imageContentType. Categories: Apparel (7), Bags & Accessories (3), Home Decor (3),
-  Keychains (1) in the initial seed. Images: 3,038,592 bytes total; largest 532,466.
+  imageContentType. The 19-entry seed has Apparel (10), Bags & Accessories (5),
+  Home Decor (3), Keychains (1). All images have enhanced boutique backgrounds
+  and are WebP files under 700 KiB. Existing database prices, stock and active
+  status are preserved on reseed. New P015-P019 start as inactive drafts; the
+  owner supplies prices and quantities and enables active when ready. P016 is
+  a nine-design tops collection preview. Public pages query active == true;
+  admin reads hidden products too. Product changes appear through onSnapshot.
 - siteSettings/public: storeName, currency, memberDiscountPercent, contacts[].
   Current WhatsApp is +96176080766 / https://wa.me/96176080766, explicitly supplied
   by user and saved via admin during this refactor. Currency USD, member discount 10%.
@@ -75,7 +82,13 @@ Firebase credentials are per Windows machine/profile; VM login is not host login
 Trusted seeds under functions/scripts use service account, ADC or CLI login. CLI
 credentials are supplied via temporary authorized-user ADC, cleaned on normal exit.
 OAuth client values match Firebase CLI. No passwords or tokens are committed.
-Products/users were successfully seeded and verified by VM output earlier today.
+Run npm run productseed from the project to copy scripts, manifests and WebP
+assets into C:\firebase-seed, install local dependencies when needed and seed.
+Use -- --dry-run for offline validation. Matching by ID/slug/normalized name
+prevents repeat inserts and rejects ambiguous matches. The seed refreshes only
+changed image fields on existing products. No automatic activation or deletion.
+Firebase credentials are required for real writes. The owner runs seeding and
+deployment after reviewing the prepared source; do not claim a dry run seeded data.
 
 ## Boundaries and verification
 
@@ -99,7 +112,8 @@ Its multi-item transaction interleaves reads/writes and lacks duplicate-ID
 aggregation; repair/test before any future backend checkout deployment. Do not
 weaken order security rules to work around that. Full Functions deploy needs Blaze.
 
-Final verification: 10 regression checks, TypeScript and production build passed.
+Regression suite now includes 16 checks for auth routing, catalog filters,
+request estimates, duplicate seed matching, live activation and hidden admin rows.
 Browser QA additionally confirmed client /admin denial, profile load, admin logout,
 collection switching and browser Back restoring category and product count. An
 unsent request for P004 at44 USD yielded39.60 USD member estimate; changing the
@@ -108,3 +122,16 @@ The configured WhatsApp number was verified in the generated link and live foote
 
 Final build after request-estimate model cleanup and three-column category layout passed. Host dependency lock was regenerated with npm11; package/lock roots match and AngularFire is absent from app source and lock. Shared-folder deployment now runs regression tests before production build.
 
+
+## Asset and repository cleanup
+
+The optimized seed images remain in src/assets/products; five are also used as
+homepage category artwork. Keep these assets. Full-size generations, originals
+and prompts stay in ignored output/product-photos; they are not needed by the app
+or seed runner. Removed the unused public/index.html, duplicate Firebase config,
+unreferenced Storage rules, outdated engineering notes and dead demo styles.
+Angular caches and output archives are ignored; deployment excludes them.
+Images use revalidation caching because their filenames are stable; hashed JS/CSS
+and fonts retain immutable caching. The deployment copy includes functions/scripts
+so duplicate-matching regression tests can import their helper. Legacy Functions
+source remains available but is not part of the normal Hosting/rules deployment.
