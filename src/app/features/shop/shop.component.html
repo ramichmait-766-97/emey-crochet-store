@@ -1,39 +1,97 @@
 <section class="shell shop">
-  <div class="intro">
-    <span class="eyebrow">THE COLLECTION</span>
-    <h1>Handmade, thoughtfully.</h1>
-    <p>Explore pieces designed for wearing, gifting and living beautifully.</p>
-  </div>
-
-  <div class="toolbar">
-    <label class="sr-only" for="search">Search pieces</label>
-    <input id="search" [(ngModel)]="search" (ngModelChange)="setSearch($event)" placeholder="Search pieces…" />
-
-    <label class="sr-only" for="category">Category</label>
-    <select id="category" [(ngModel)]="category" (ngModelChange)="setCategory($event)">
-      <option value="">All categories</option>
-      @for (item of categories; track item) {
-        <option [value]="item">{{ item }}</option>
-      }
-    </select>
-
-    <label class="sr-only" for="sort">Sort products</label>
-    <select id="sort" [(ngModel)]="sort" (ngModelChange)="setSort($event)">
-      <option value="featured">Featured</option>
-      <option value="price-asc">Price: low to high</option>
-      <option value="price-desc">Price: high to low</option>
-      <option value="new">New arrivals</option>
-    </select>
-  </div>
-
-  @if (filtered$ | async; as list) {
-    <div class="count">{{ list.length }} pieces</div>
-    <div class="grid">
-      @for (product of list; track product.id) {
-        <app-product-card [product]="product" />
-      } @empty {
-        <div class="empty">No pieces match your current filters.</div>
-      }
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a routerLink="/">Home</a>
+    <span>/</span>
+    <span>Shop</span>
+  </nav>
+  @if (vm$ | async; as vm) {
+    <div class="intro">
+      <span class="eyebrow">THE EMEY COLLECTION</span>
+      <h1>
+        {{
+          vm.category ||
+            (vm.collection === 'new'
+              ? 'Fresh from the hook.'
+              : vm.collection === 'bestsellers'
+                ? 'Your most-loved pieces.'
+                : 'Made for everyday beauty.')
+        }}
+      </h1>
+      <p>A little texture. A little colour. Something entirely your own.</p>
     </div>
+    <nav class="collection-nav" aria-label="Collections">
+      <a
+        routerLink="/shop"
+        [class.selected]="!vm.category && !vm.collection"
+        [attr.aria-current]="!vm.category && !vm.collection ? 'page' : null"
+      >
+        All pieces
+      </a>
+      @for (category of categories; track category) {
+        <a
+          routerLink="/shop"
+          [queryParams]="{ category }"
+          [class.selected]="vm.category === category"
+          [attr.aria-current]="vm.category === category ? 'page' : null"
+        >
+          {{ category }}
+        </a>
+      }
+    </nav>
+    <div class="toolbar">
+      <label>
+        <span>Find your piece</span>
+        <input
+          type="search"
+          [ngModel]="vm.search"
+          (ngModelChange)="setFilter('q', $event)"
+          placeholder="Search by name, colour or collection"
+        />
+      </label>
+      <label>
+        <span>Sort by</span>
+        <select [ngModel]="vm.sort" (ngModelChange)="setFilter('sort', $event)">
+          <option value="featured">Featured</option>
+          <option value="new">New arrivals</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+        </select>
+      </label>
+    </div>
+    @if (vm.loading) {
+      <div class="skeleton-grid" aria-label="Loading products" role="status">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="skeleton"></div>
+        }
+      </div>
+    } @else if (vm.error) {
+      <div class="state-panel" role="alert">
+        <h2>The collection couldn't load</h2>
+        <p>{{ vm.error }}</p>
+        <button class="btn primary" (click)="products.refresh()">Try again</button>
+      </div>
+    } @else {
+      <div class="results-bar">
+        <p role="status">
+          {{ vm.items.length }} {{ vm.items.length === 1 ? 'piece' : 'pieces'
+          }}{{ vm.category ? ' in this collection' : ' to discover' }}
+        </p>
+        @if (vm.search || vm.category || vm.collection) {
+          <button class="text-button" (click)="clear()">Clear filters</button>
+        }
+      </div>
+      <div class="grid" [class.three-up]="vm.items.length === 3">
+        @for (product of vm.items; track product.id) {
+          <app-product-card [product]="product" />
+        } @empty {
+          <div class="state-panel">
+            <span class="eyebrow">A FRESH START</span>
+            <h2>No pieces found</h2>
+            <p>Try another search or explore the complete collection.</p>
+            <button class="btn primary" (click)="clear()">See all pieces</button>
+          </div>
+        }
+      </div>
+    }
   }
 </section>

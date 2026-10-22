@@ -104,13 +104,65 @@ nav a,
     height: 68px;
   }
 
-  nav,
-  .actions .link,
   .brand small {
     display: none;
   }
 
   .promo {
     font-size: 0.68rem;
+  }
+}
+
+.logout-error {
+  color: #8a3e34;
+  padding-bottom: 0.6rem;
+}
+@media (max-width: 720px) {
+  .nav {
+    height: auto;
+    min-height: 68px;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding-block: 0.7rem;
+  }
+  .actions {
+    flex-wrap: wrap;
+    gap: 0.8rem;
+  }
+  .actions a,
+  .link {
+    font-size: 0.78rem;
+  }
+  .link {
+    min-height: 40px;
+  }
+}
+
+.mobile-account {
+  display: none;
+}
+@media (max-width: 720px) {
+  .nav {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem 1rem;
+  }
+  .nav nav {
+    display: flex;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    border-top: 1px solid var(--line);
+    padding-top: 0.7rem;
+    gap: 1.5rem;
+  }
+  .nav nav .mobile-account {
+    display: block;
+  }
+  .actions {
+    justify-content: flex-end;
+    gap: 0.7rem;
+  }
+  .actions .account-link {
+    display: none;
   }
 }

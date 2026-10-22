@@ -1,5 +1,12 @@
 import { AsyncPipe, CurrencyPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  OnInit,
+  inject,
+} from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { PRODUCT_CATEGORIES } from '../../core/constants/store.constants';
@@ -9,11 +16,10 @@ import { AdminStoreService, ProductDraft } from '../../core/services/admin-store
 import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { environment } from '../../../environments/environment';
 import { productImageSrc } from '../../core/utils/product-image';
-import { ProductImagePipe } from '../../shared/pipes/product-image.pipe';
 
 @Component({
   standalone: true,
-  imports: [AsyncPipe, CurrencyPipe, FormsModule, ProductImagePipe],
+  imports: [AsyncPipe, CurrencyPipe, FormsModule, RouterLink],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,6 +29,7 @@ export class AdminComponent implements OnInit {
   readonly categories = PRODUCT_CATEGORIES;
   readonly admin = inject(AdminStoreService);
   readonly siteSettings = inject(SiteSettingsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   tab: 'products' | 'settings' = 'products';
   showEditor = false;
@@ -35,8 +42,14 @@ export class AdminComponent implements OnInit {
   settingsDraft?: SiteSettings;
 
   async ngOnInit(): Promise<void> {
-    const settings = await firstValueFrom(this.siteSettings.settings$);
-    this.beginSettings(settings);
+    try {
+      const settings = await firstValueFrom(this.siteSettings.settings$);
+      this.beginSettings(settings);
+    } catch {
+      this.error = 'Unable to load store settings. Please refresh and try again.';
+    } finally {
+      this.cdr.markForCheck();
+    }
   }
 
   openNew(): void {
@@ -71,6 +84,7 @@ export class AdminComponent implements OnInit {
     const reader = new FileReader();
     reader.onload = () => {
       this.selectedPreview = typeof reader.result === 'string' ? reader.result : '';
+      this.cdr.markForCheck();
     };
     reader.readAsDataURL(this.selectedFile);
   }
@@ -128,6 +142,10 @@ export class AdminComponent implements OnInit {
 
   async saveSettings(): Promise<void> {
     if (!this.settingsDraft) return;
+    if (this.siteSettings.loadError()) {
+      this.error = 'Settings could not load. Please refresh before saving.';
+      return;
+    }
     await this.runSave(async () => {
       await this.admin.saveSettings(this.settingsDraft!);
       this.notice = 'Store settings saved successfully.';
@@ -143,6 +161,7 @@ export class AdminComponent implements OnInit {
       this.error = error instanceof Error ? error.message : 'Unable to save changes.';
     } finally {
       this.saving = false;
+      this.cdr.markForCheck();
     }
   }
 

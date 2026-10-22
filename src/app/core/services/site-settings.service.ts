@@ -1,5 +1,7 @@
-import { Injectable, inject } from '@angular/core';
-import { Firestore, doc, docData } from '@angular/fire/firestore';
+import { docData } from '../utils/firestore-streams';
+import { FirebaseService } from './firebase.service';
+import { Injectable, inject, signal } from '@angular/core';
+import { doc } from 'firebase/firestore';
 import { Observable, catchError, map, of, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { DEFAULT_SITE_SETTINGS } from '../constants/store.constants';
@@ -7,7 +9,8 @@ import { ContactMethod, SiteSettings } from '../models/site-settings.model';
 
 @Injectable({ providedIn: 'root' })
 export class SiteSettingsService {
-  private readonly firestore = inject(Firestore);
+  private readonly firestore = inject(FirebaseService).firestore;
+  readonly loadError = signal(false);
 
   readonly settings$ = this.createSettingsStream();
 
@@ -27,8 +30,14 @@ export class SiteSettingsService {
     }
 
     return (docData(doc(this.firestore, 'siteSettings/public')) as Observable<SiteSettings>).pipe(
-      map((settings) => ({ ...DEFAULT_SITE_SETTINGS, ...settings })),
-      catchError(() => of(DEFAULT_SITE_SETTINGS)),
+      map((settings) => {
+        this.loadError.set(false);
+        return { ...DEFAULT_SITE_SETTINGS, ...settings, contacts: settings?.contacts ?? [] };
+      }),
+      catchError(() => {
+        this.loadError.set(true);
+        return of({ ...DEFAULT_SITE_SETTINGS, contacts: [] });
+      }),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
   }

@@ -1,10 +1,15 @@
 @if (settings.settings$ | async; as site) {
   <div class="promo">
-    Members receive <strong>{{ site.memberDiscountPercent }}% off</strong> every website order.
-    <a routerLink="/login">Sign in</a>
+    Members receive
+    <strong>{{ site.memberDiscountPercent }}% off</strong>
+    every website order.
+    @if (!(auth.firebaseUser$ | async)) {
+      <a routerLink="/login">Sign in</a>
+    }
   </div>
 }
 
+<a class="skip-link" href="#main-content">Skip to content</a>
 <header class="nav shell">
   <a class="brand" routerLink="/" aria-label="Emey Crochet Store home">
     <img src="assets/branding/emey-mark.svg" alt="" width="44" height="44" />
@@ -17,18 +22,31 @@
   <nav aria-label="Primary navigation">
     <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
     <a routerLink="/shop" routerLinkActive="active">Shop</a>
+    <a routerLink="/" fragment="story">Our story</a>
+    @if (auth.firebaseUser$ | async) {
+      <a class="mobile-account" routerLink="/account" routerLinkActive="active">Profile</a>
+    }
   </nav>
 
   <div class="actions">
-    @if (auth.firebaseUser$ | async) {
-      <a routerLink="/account">Account</a>
-      <button type="button" class="link" (click)="auth.logout()">Sign out</button>
-    } @else {
-      <a routerLink="/login">Login</a>
+    @if (auth.user$ | async; as user) {
+      @if (user.role === 'admin') {
+        <a routerLink="/admin" routerLinkActive="active">Manage store</a>
+      }
+      <a class="account-link" routerLink="/account" routerLinkActive="active">Account</a>
+      <button type="button" class="link" [disabled]="signingOut()" (click)="logout()">
+        {{ signingOut() ? 'Signing out…' : 'Sign out' }}
+      </button>
+    } @else if (auth.ready()) {
+      <a routerLink="/login">Sign in</a>
     }
 
     <a class="cart" routerLink="/cart" aria-label="Shopping bag">
-      Bag <span>{{ cart.count() }}</span>
+      Bag
+      <span>{{ cart.count() }}</span>
     </a>
   </div>
 </header>
+@if (logoutError()) {
+  <p class="logout-error shell" role="alert">{{ logoutError() }}</p>
+}

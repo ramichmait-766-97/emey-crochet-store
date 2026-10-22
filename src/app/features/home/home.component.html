@@ -1,77 +1,131 @@
 <section class="hero shell">
   <div class="copy">
-    <span class="eyebrow">HANDMADE · WARM · TIMELESS</span>
-    <h1>Crafted by hand,<br /><em>made to be kept.</em></h1>
-    <p>Thoughtful crochet pieces where cozy craftsmanship meets a refined boutique aesthetic.</p>
-
+    <span class="eyebrow">SMALL BATCH · HANDMADE WITH HEART</span>
+    <h1>
+      Crafted by hand,
+      <br />
+      <em>made to be kept.</em>
+    </h1>
+    <p>
+      Soft textures, thoughtful details, and a little everyday joy. Discover crochet pieces made at
+      a slower pace.
+    </p>
     <div class="buttons">
-      <a class="btn primary" routerLink="/shop">Explore the collection</a>
-      <a class="btn ghost" href="#story">Our story</a>
+      <a class="btn primary" routerLink="/shop">Find your next favourite</a>
+      <a class="btn ghost" routerLink="/" fragment="story">Meet Emey</a>
     </div>
-
-    @if (settings.settings$ | async; as site) {
-      <div class="member">
-        <b>{{ site.memberDiscountPercent }}% member benefit</b>
-        <span>Sign in before checkout and your discount is applied automatically.</span>
-      </div>
-    }
+    <div class="member">
+      <b>A personal touch, in every stitch</b>
+      <span>Handmade pieces for wearing, gifting and making yourself at home.</span>
+    </div>
   </div>
-
   <div class="visual">
-    <img src="assets/products/sunflower-bag.webp" alt="Sunflower crochet bag" fetchpriority="high" />
-    <div class="float">Made slowly<br /><b>with heart.</b></div>
+    <a routerLink="/product/sunflower-drawstring-bag" aria-label="View Sunflower Drawstring Bag">
+      <img
+        src="assets/products/sunflower-bag.webp"
+        alt="Sunflower crochet bag"
+        fetchpriority="high"
+      />
+    </a>
+    <div class="float">
+      Made slowly
+      <br />
+      <b>with heart.</b>
+    </div>
   </div>
 </section>
-
 <section class="categories shell">
   <div class="section-head">
     <div>
-      <span class="eyebrow">CURATED FOR EVERY MOMENT</span>
-      <h2>Shop by collection</h2>
+      <span class="eyebrow">FIND YOUR LITTLE JOY</span>
+      <h2>Something for every day.</h2>
     </div>
-    <a routerLink="/shop">View all →</a>
+    <a routerLink="/shop">Shop all pieces →</a>
   </div>
-
   <div class="cat-grid">
     <a routerLink="/shop" [queryParams]="{ category: 'Apparel' }">
-      <img src="assets/products/yellow-child-dress.webp" alt="Crochet apparel" loading="lazy" />
-      <span>Apparel</span>
+      <img
+        src="assets/products/yellow-child-dress.webp"
+        alt="Yellow crochet dress"
+        loading="lazy"
+      />
+      <span>Apparel →</span>
     </a>
     <a routerLink="/shop" [queryParams]="{ category: 'Bags & Accessories' }">
-      <img src="assets/products/royal-blue-frame-bag.webp" alt="Crochet bags and accessories" loading="lazy" />
-      <span>Bags & Accessories</span>
+      <img
+        src="assets/products/royal-blue-frame-bag.webp"
+        alt="Royal blue crochet handbag"
+        loading="lazy"
+      />
+      <span>Bags & Accessories →</span>
     </a>
     <a routerLink="/shop" [queryParams]="{ category: 'Home Decor' }">
-      <img src="assets/products/geometric-blanket.webp" alt="Crochet home decor" loading="lazy" />
-      <span>Home Decor</span>
+      <img
+        src="assets/products/geometric-blanket.webp"
+        alt="Geometric crochet blanket"
+        loading="lazy"
+      />
+      <span>Home Decor →</span>
+    </a>
+    <a routerLink="/shop" [queryParams]="{ category: 'Keychains' }">
+      <img src="assets/products/flower-keychains.webp" alt="Flower keychains" loading="lazy" />
+      <span>Little gifts →</span>
     </a>
   </div>
 </section>
-
 <section class="featured shell">
   <div class="section-head">
     <div>
       <span class="eyebrow">FRESH FROM THE HOOK</span>
-      <h2>Pieces we love</h2>
+      <h2>Pieces to fall for.</h2>
     </div>
+    <a routerLink="/shop" [queryParams]="{ collection: 'new', sort: 'new' }">New arrivals →</a>
   </div>
-
-  <div class="product-grid">
-    @for (product of products.featured() | async; track product.id) {
-      <app-product-card [product]="product" />
+  @if (products.state$ | async; as state) {
+    @if (state.loading) {
+      <div class="skeleton-grid" role="status" aria-label="Loading featured pieces">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="skeleton"></div>
+        }
+      </div>
+    } @else if (state.error) {
+      <div class="state-panel" role="alert">
+        <h3>We couldn't load the collection</h3>
+        <p>{{ state.error }}</p>
+        <button class="btn ghost" (click)="products.refresh()">Try again</button>
+      </div>
+    } @else {
+      <div class="product-grid">
+        @for (product of state.products.slice(0, 8); track product.id) {
+          <app-product-card [product]="product" />
+        } @empty {
+          <p>New handmade pieces are on their way. Check back soon.</p>
+        }
+      </div>
     }
+  }
+  <div class="collection-more">
+    <a class="btn ghost" routerLink="/shop">Explore all pieces →</a>
   </div>
 </section>
-
 <section id="story" class="story">
   <div class="shell story-grid">
     <div>
       <span class="eyebrow">THE EMEY FEELING</span>
-      <h2>Small details.<br />Big warmth.</h2>
+      <h2>
+        Small details.
+        <br />
+        Big warmth.
+      </h2>
     </div>
     <div>
-      <p>Every piece begins with yarn, patience and a point of view. Emey is built around the charm of handmade work without giving up the polish of a modern boutique.</p>
-      <p class="quote">“Beautiful enough to gift. Personal enough to keep.”</p>
+      <p>
+        Every piece begins with yarn, patience and a point of view. We celebrate the quiet charm of
+        handmade work: the textures you can feel, the colours that make you smile, and the care in
+        every stitch.
+      </p>
+      <p class="quote">Beautiful enough to gift. Personal enough to keep.</p>
+      <a class="btn ghost" routerLink="/shop">Discover the collection</a>
     </div>
   </div>
 </section>

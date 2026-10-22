@@ -1,14 +1,8 @@
+import { collectionData } from '../utils/firestore-streams';
+import { FirebaseService } from './firebase.service';
 import { Injectable, inject } from '@angular/core';
-import {
-  Firestore,
-  collection,
-  collectionData,
-  doc,
-  docData,
-  query,
-  where,
-} from '@angular/fire/firestore';
-import { Observable, map, of, shareReplay } from 'rxjs';
+import { collection, query, where } from 'firebase/firestore';
+import { Observable, Subject, catchError, map, of, shareReplay, startWith, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Product } from '../models/product.model';
 import { productImageSrc } from '../utils/product-image';
@@ -16,41 +10,29 @@ import { SEED_PRODUCTS } from './seed-products';
 
 @Injectable({ providedIn: 'root' })
 export class ProductService {
-  private readonly firestore = inject(Firestore);
+  private readonly firestore = inject(FirebaseService).firestore;
   private readonly products$ = this.createProductStream();
-
-  list(): Observable<Product[]> {
-    return this.products$;
-  }
-
-  featured(): Observable<Product[]> {
-    return this.products$.pipe(
-      map((products) =>
-        products.filter((product) => product.bestSeller || product.newArrival).slice(0, 8),
+  private readonly reload$ = new Subject<void>();
+  readonly state$ = this.reload$.pipe(
+    startWith(undefined),
+    switchMap(() =>
+      this.products$.pipe(
+        map((products) => ({ products, loading: false, error: '' })),
+        startWith({ products: [] as Product[], loading: true, error: '' }),
+        catchError(() =>
+          of({
+            products: [] as Product[],
+            loading: false,
+            error:
+              'Please check your connection and try again. If this continues, contact the store.',
+          }),
+        ),
       ),
-    );
-  }
-
-  bySlug(slug: string): Observable<Product | undefined> {
-    if (environment.demoMode) {
-      return of(SEED_PRODUCTS.find((product) => product.slug === slug));
-    }
-
-    return this.products$.pipe(
-      map((products) => products.find((product) => product.slug === slug)),
-    );
-  }
-
-  byId(id: string): Observable<Product | undefined> {
-    if (environment.demoMode) {
-      return of(SEED_PRODUCTS.find((product) => product.id === id));
-    }
-
-    return (
-      docData(doc(this.firestore, `products/${id}`), { idField: 'id' }) as Observable<
-        Product | undefined
-      >
-    ).pipe(map((product) => (product ? this.withDisplayImage(product) : product)));
+    ),
+    shareReplay({ bufferSize: 1, refCount: true }),
+  );
+  refresh(): void {
+    this.reload$.next();
   }
 
   private createProductStream(): Observable<Product[]> {
@@ -63,7 +45,7 @@ export class ProductService {
       where('active', '==', true),
     );
 
-    return (collectionData(productsQuery, { idField: 'id' }) as Observable<Product[]>).pipe(
+    return collectionData<Product>(productsQuery, { idField: 'id' }).pipe(
       map((products) => products.map((product) => this.withDisplayImage(product))),
       shareReplay({ bufferSize: 1, refCount: true }),
     );

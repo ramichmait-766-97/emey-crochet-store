@@ -6,11 +6,14 @@
     "node": ">=20.19.0 <21 || >=22.12.0 <23 || >=24.0.0 <25"
   },
   "scripts": {
+    "firebase": "powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"& (Join-Path (Split-Path -LiteralPath $env:npm_package_json) 'scripts/firebase.ps1')\"",
     "ng": "ng",
     "start": "ng serve --open",
     "build": "ng build",
     "build:prod": "ng build --configuration production",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "test:auth": "node --test scripts/auth-navigation.test.mjs",
+    "test": "node --test scripts/auth-navigation.test.mjs scripts/storefront.test.mjs",
     "format": "prettier --write \"{src,functions}/**/*.{ts,html,scss,mjs,json}\" \"*.{json,md}\"",
     "format:check": "prettier --check \"{src,functions}/**/*.{ts,html,scss,mjs,json}\" \"*.{json,md}\"",
     "functions:install": "npm --prefix functions install",
@@ -18,13 +21,14 @@
     "firebase:emulators": "firebase emulators:start",
     "firebase:deploy": "npm run build:prod && npm run functions:build && firebase deploy",
     "admin:set": "node functions/scripts/set-admin.mjs",
-    "products:seed": "node functions/scripts/seed-products.mjs"
+    "products:seed": "node functions/scripts/seed-products.mjs",
+    "users:seed": "node functions/scripts/seed-users.mjs",
+    "firebase:deploy:free": "npm run build:prod && firebase deploy --project emey-crochet-store --only hosting,firestore:rules"
   },
   "dependencies": {
     "@angular/common": "^20.3.33",
     "@angular/compiler": "^20.3.33",
     "@angular/core": "^20.3.33",
-    "@angular/fire": "20.1.1",
     "@angular/forms": "^20.3.33",
     "@angular/platform-browser": "^20.3.33",
     "@angular/router": "^20.3.33",

@@ -9,6 +9,8 @@ export const adminGuard: CanActivateFn = () => {
 
   return auth.user$.pipe(
     take(1),
-    map((user) => (user?.role === 'admin' ? true : router.createUrlTree(['/']))),
+    map((user) =>
+      user?.role === 'admin' ? true : router.createUrlTree([user ? '/account' : '/login']),
+    ),
   );
 };

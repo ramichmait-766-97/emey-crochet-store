@@ -2,13 +2,48 @@
   <div class="panel">
     <span class="eyebrow">WELCOME TO EMEY</span>
     <h1>{{ mode === 'login' ? 'Sign in' : 'Create your account' }}</h1>
-    @if (settings.settings$ | async; as site) { <p>Members receive {{ site.memberDiscountPercent }}% off website orders.</p> }
+    @if (settings.settings$ | async; as site) {
+      <p>Members receive {{ site.memberDiscountPercent }}% off website orders.</p>
+    }
 
-    <form (ngSubmit)="submit()">
-      <label>Email<input type="email" name="email" [(ngModel)]="email" autocomplete="email" required /></label>
-      <label>Password<input type="password" name="password" [(ngModel)]="password" [autocomplete]="mode === 'login' ? 'current-password' : 'new-password'" required minlength="6" /></label>
-      <button class="btn primary wide" [disabled]="busy">{{ busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account' }}</button>
+    <form #authForm="ngForm" (ngSubmit)="authForm.valid && submit()">
+      <label>
+        Email
+        <input type="email" name="email" [(ngModel)]="email" autocomplete="email" required />
+      </label>
+      <label>
+        Password
+        <input
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          [autocomplete]="mode === 'login' ? 'current-password' : 'new-password'"
+          required
+          minlength="6"
+        />
+      </label>
+      @if (mode === 'register') {
+        <label>
+          Confirm password
+          <input
+            type="password"
+            name="confirmation"
+            [(ngModel)]="confirmation"
+            autocomplete="new-password"
+            required
+            minlength="6"
+          />
+        </label>
+      }
+      <button class="btn primary wide" [disabled]="busy || authForm.invalid">
+        {{ busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account' }}
+      </button>
     </form>
+    @if (mode === 'login') {
+      <button class="switch" type="button" [disabled]="busy" (click)="resetPassword()">
+        Forgot your password?
+      </button>
+    }
 
     <div class="or"><span>or continue with</span></div>
     <div class="social">
@@ -20,6 +55,11 @@
       {{ mode === 'login' ? 'New here? Create an account' : 'Already have an account? Sign in' }}
     </button>
 
-    @if (error) { <div class="error" role="alert">{{ error }}</div> }
+    @if (error) {
+      <div class="error" role="alert">{{ error }}</div>
+    }
+    @if (notice) {
+      <p role="status">{{ notice }}</p>
+    }
   </div>
 </section>

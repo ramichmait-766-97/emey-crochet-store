@@ -6,8 +6,8 @@ export interface CheckoutContact {
   notes?: string;
 }
 
-export interface OrderResult {
-  orderId: string;
+export interface OrderRequestEstimate {
+  whatsappUrl: string;
   subtotal: number;
   discount: number;
   total: number;

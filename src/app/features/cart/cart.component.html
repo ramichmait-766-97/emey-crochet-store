@@ -10,28 +10,60 @@
             <div class="line">
               <img [src]="line.product | productImage" [alt]="line.product.name" />
               <div class="grow">
-                <b>{{ line.product.name }}</b>
+                <a [routerLink]="['/product', line.product.slug]">
+                  <b>{{ line.product.name }}</b>
+                </a>
+                @if (!line.product.active || !line.product.quantity) {
+                  <span class="error">This piece is currently unavailable. Please remove it.</span>
+                }
                 <span>{{ line.product.price | currency: site.currency }} each</span>
                 <div class="qty" aria-label="Quantity controls">
-                  <button type="button" (click)="cart.setQuantity(line.product.id, line.quantity - 1)" aria-label="Decrease quantity">−</button>
+                  <button
+                    type="button"
+                    (click)="cart.setQuantity(line.product.id, line.quantity - 1)"
+                    aria-label="Decrease quantity"
+                  >
+                    −
+                  </button>
                   <span>{{ line.quantity }}</span>
-                  <button type="button" (click)="cart.setQuantity(line.product.id, line.quantity + 1)" aria-label="Increase quantity">+</button>
+                  <button
+                    type="button"
+                    (click)="cart.setQuantity(line.product.id, line.quantity + 1)"
+                    [disabled]="line.quantity >= line.product.quantity || !line.product.active"
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
-              <button class="remove" type="button" (click)="cart.remove(line.product.id)">Remove</button>
+              <button class="remove" type="button" (click)="cart.remove(line.product.id)">
+                Remove
+              </button>
             </div>
           }
         </div>
       } @else {
-        <p class="empty">Your bag is waiting for something beautiful.</p>
+        <div class="state-panel">
+          <h2>Your bag is waiting for a little joy.</h2>
+          <p>Discover something handmade, just for you.</p>
+          <a class="btn primary" routerLink="/shop">Explore the collection</a>
+        </div>
       }
     </div>
 
     <aside>
       @if (auth.firebaseUser$ | async) {
-        <div class="discount success-tone">✓ Signed in — your <b>{{ site.memberDiscountPercent }}% member discount</b> is verified at checkout.</div>
+        <div class="discount success-tone">
+          ✓ Signed in — your
+          <b>{{ site.memberDiscountPercent }}% member discount</b>
+          is verified at checkout.
+        </div>
       } @else {
-        <div class="discount">Sign in before checkout to receive <b>{{ site.memberDiscountPercent }}% off</b>.</div>
+        <div class="discount">
+          Sign in before checkout to receive
+          <b>{{ site.memberDiscountPercent }}% off</b>
+          .
+        </div>
       }
 
       <div class="total">
@@ -39,24 +71,113 @@
         <b>{{ cart.subtotal() | currency: site.currency }}</b>
       </div>
 
-      <h3>Checkout details</h3>
-      <label>Full name<input [(ngModel)]="contact.fullName" autocomplete="name" /></label>
-      <label>Email<input type="email" [(ngModel)]="contact.email" autocomplete="email" /></label>
-      <label>Phone / WhatsApp<input [(ngModel)]="contact.phone" autocomplete="tel" /></label>
-      <label>Delivery address<textarea [(ngModel)]="contact.address" autocomplete="street-address"></textarea></label>
-      <label>Order notes<textarea [(ngModel)]="contact.notes" placeholder="Optional"></textarea></label>
+      <form #requestForm="ngForm" (ngSubmit)="requestForm.valid && checkout()">
+        <fieldset [disabled]="busy || filling">
+          <h3>Request your pieces</h3>
+          <p class="hint">
+            Send your selection to the store on WhatsApp. We will confirm availability, delivery and
+            payment before you commit.
+          </p>
+          @if (auth.firebaseUser$ | async) {
+            <button
+              class="btn ghost"
+              type="button"
+              [disabled]="filling || busy"
+              (click)="useProfile()"
+            >
+              {{ filling ? 'Loading details…' : 'Use saved billing details for delivery' }}
+            </button>
+          }
+          <label>
+            Full name
+            <input
+              name="fullName"
+              required
+              maxlength="120"
+              [(ngModel)]="contact.fullName"
+              autocomplete="name"
+            />
+          </label>
+          <label>
+            Email
+            <input
+              type="email"
+              name="email"
+              maxlength="200"
+              [(ngModel)]="contact.email"
+              autocomplete="email"
+            />
+          </label>
+          <label>
+            Phone / WhatsApp
+            <input
+              name="phone"
+              type="tel"
+              required
+              maxlength="40"
+              [(ngModel)]="contact.phone"
+              autocomplete="tel"
+            />
+          </label>
+          <label>
+            Delivery address
+            <textarea
+              name="address"
+              maxlength="500"
+              [(ngModel)]="contact.address"
+              autocomplete="street-address"
+            ></textarea>
+          </label>
+          <label>
+            Order notes
+            <textarea
+              name="notes"
+              maxlength="1000"
+              [(ngModel)]="contact.notes"
+              placeholder="Optional"
+            ></textarea>
+          </label>
 
-      <button class="btn primary wide" type="button" [disabled]="busy || !cart.lines().length || !contact.fullName.trim() || !contact.phone.trim()" (click)="checkout()">
-        {{ busy ? 'Placing order…' : 'Place order' }}
-      </button>
-
-      @if (error) { <div class="message error">{{ error }}</div> }
-      @if (result) {
+          <button
+            class="btn primary wide"
+            type="submit"
+            [disabled]="
+              busy ||
+              filling ||
+              requestForm.invalid ||
+              !cart.lines().length ||
+              !contact.fullName.trim() ||
+              !contact.phone.trim()
+            "
+          >
+            {{ busy ? 'Checking availability…' : 'Prepare WhatsApp request' }}
+          </button>
+        </fieldset>
+      </form>
+      @if (error) {
+        <div class="message error">{{ error }}</div>
+      }
+      @if (result && requestMatches) {
         <div class="message success">
-          Order <b>{{ result.orderId }}</b> created.<br />
-          Total: <b>{{ result.total | currency: result.currency }}</b>
+          Your request is ready to send.
+          <br />
+          Subtotal: {{ result.subtotal | currency: result.currency }}
+          @if (result.discount) {
+            <br />
+            Member saving: {{ result.discount | currency: result.currency }}
+          }
+          <br />
+          Estimated total:
+          <b>{{ result.total | currency: result.currency }}</b>
+          <p class="hint">
+            Delivery and payment are confirmed by the store. Your bag stays saved until you remove
+            its items.
+          </p>
           @if (whatsappUrl !== '#') {
-            <br /><a [href]="whatsappUrl" target="_blank" rel="noopener noreferrer">Continue on WhatsApp →</a>
+            <br />
+            <a [href]="whatsappUrl" target="_blank" rel="noopener noreferrer">
+              Send request on WhatsApp →
+            </a>
           }
         </div>
       }

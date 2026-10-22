@@ -1,12 +1,32 @@
 @if (viewModel$ | async; as vm) {
-  @if (vm.product; as product) {
+  @if (vm.loading) {
+    <section class="shell detail">
+      <div class="skeleton" role="status" aria-label="Loading product"></div>
+    </section>
+  } @else if (vm.error) {
+    <section class="shell detail">
+      <div class="state-panel" role="alert">
+        <h1>We couldn't load this piece</h1>
+        <p>{{ vm.error }}</p>
+        <button class="btn primary" (click)="retry()">Try again</button>
+      </div>
+    </section>
+  } @else if (vm.product; as product) {
     <section class="shell detail">
       <div class="image">
         <img [src]="product | productImage" [alt]="product.name" />
       </div>
 
       <div class="info">
-        <a class="back" routerLink="/shop">← Back to collection</a>
+        <nav class="breadcrumbs" aria-label="Breadcrumb">
+          <a routerLink="/">Home</a>
+          <span>/</span>
+          <a routerLink="/shop">Shop</a>
+          <span>/</span>
+          <a routerLink="/shop" [queryParams]="{ category: product.category }">
+            {{ product.category }}
+          </a>
+        </nav>
         <span class="eyebrow">{{ product.category }}</span>
         <h1>{{ product.name }}</h1>
         <div class="price">{{ product.price | currency: vm.site.currency }}</div>
@@ -14,29 +34,53 @@
 
         @if (product.colors.length) {
           <div class="colors">
-            @for (color of product.colors; track color) { <span>{{ color }}</span> }
+            @for (color of product.colors; track color) {
+              <span>{{ color }}</span>
+            }
           </div>
         }
 
         <div class="facts">
-          <div><span>Availability</span><b>{{ product.quantity > 0 ? product.quantity + ' available' : 'Sold out' }}</b></div>
-          <div><span>Product ID</span><b>{{ product.id }}</b></div>
+          <div>
+            <span>Availability</span>
+            <b>{{ product.quantity > 0 ? product.quantity + ' available' : 'Sold out' }}</b>
+          </div>
+          <div>
+            <span>Product ID</span>
+            <b>{{ product.id }}</b>
+          </div>
         </div>
 
-        <button class="btn primary wide" type="button" [disabled]="!product.quantity" (click)="cart.add(product)">Add to bag</button>
+        <button
+          class="btn primary wide"
+          type="button"
+          [disabled]="!product.quantity"
+          (click)="cart.add(product)"
+        >
+          Add to bag
+        </button>
+        <a class="view-bag" routerLink="/cart">View your bag →</a>
 
         <div class="member-note">
           <b>Member pricing</b>
-          <span>Sign in and receive {{ vm.site.memberDiscountPercent }}% off this item at checkout.</span>
+          <span>
+            Sign in and receive {{ vm.site.memberDiscountPercent }}% off this item at checkout.
+          </span>
         </div>
 
         <div class="care">
           <h3>Handmade notes</h3>
-          <p>Each piece is individually crafted. Small variations are part of the character of handmade crochet.</p>
+          <p>
+            Each piece is individually crafted. Small variations are part of the character of
+            handmade crochet.
+          </p>
         </div>
       </div>
     </section>
   } @else {
-    <section class="shell not-found"><h1>Piece not found.</h1><a class="btn primary" routerLink="/shop">Return to the collection</a></section>
+    <section class="shell not-found">
+      <h1>Piece not found.</h1>
+      <a class="btn primary" routerLink="/shop">Return to the collection</a>
+    </section>
   }
 }

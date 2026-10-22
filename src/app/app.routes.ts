@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/guards/admin.guard';
 import { authGuard } from './core/guards/auth.guard';
+import { guestGuard } from './core/guards/guest.guard';
 
 export const routes: Routes = [
   {
@@ -27,6 +28,7 @@ export const routes: Routes = [
   },
   {
     path: 'login',
+    canActivate: [guestGuard],
     title: 'Sign in · Emey Crochet Store',
     loadComponent: () => import('./features/login/login.component').then((m) => m.LoginComponent),
   },
@@ -37,11 +39,17 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/account/account.component').then((m) => m.AccountComponent),
   },
+  { path: 'profile', redirectTo: 'account', pathMatch: 'full' },
   {
     path: 'admin',
     title: 'Store Management · Emey Crochet Store',
     canActivate: [authGuard, adminGuard],
     loadComponent: () => import('./features/admin/admin.component').then((m) => m.AdminComponent),
   },
-  { path: '**', redirectTo: '' },
+  {
+    path: '**',
+    title: 'Page not found · Emey',
+    loadComponent: () =>
+      import('./features/not-found/not-found.component').then((m) => m.NotFoundComponent),
+  },
 ];

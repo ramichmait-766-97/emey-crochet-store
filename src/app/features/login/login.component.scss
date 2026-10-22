@@ -1,14 +1,87 @@
-.auth { display: grid; min-height: 72vh; padding: 4rem 1rem; place-items: center; background: radial-gradient(circle at 70% 20%, #ead5c8 0, transparent 35%); }
-.panel { width: min(460px, 100%); padding: 2.2rem; background: #fffaf7; border: 1px solid var(--line); border-radius: 26px; box-shadow: var(--shadow); }
-h1 { margin: .8rem 0; font: 500 2.6rem var(--serif); }
-.panel > p { color: var(--muted); font-size: .88rem; }
-label { display: block; margin: 1rem 0; color: var(--muted); font-size: .78rem; }
-input { display: block; width: 100%; margin-top: .4rem; padding: .9rem; background: white; border: 1px solid var(--line); border-radius: 12px; }
-.wide { width: 100%; border: 0; }
-.or { margin: 1.6rem 0 1rem; text-align: center; border-top: 1px solid var(--line); }
-.or span { position: relative; top: -.65rem; padding: 0 .8rem; color: var(--muted); font-size: .72rem; background: #fffaf7; }
-.social { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
-.social button { padding: .8rem; background: white; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
-.switch { display: block; margin: 1.5rem auto 0; color: var(--brown); background: none; border: 0; cursor: pointer; }
-button:disabled { cursor: wait; opacity: .6; }
-.error { margin-top: 1rem; padding: .8rem; color: #8a3e34; font-size: .8rem; background: #fbe8e5; border-radius: 10px; }
+.auth {
+  display: grid;
+  min-height: 72vh;
+  padding: 4rem 1rem;
+  place-items: center;
+  background: radial-gradient(circle at 70% 20%, #ead5c8 0, transparent 35%);
+}
+.panel {
+  width: min(460px, 100%);
+  padding: 2.2rem;
+  background: #fffaf7;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  box-shadow: var(--shadow);
+}
+h1 {
+  margin: 0.8rem 0;
+  font: 500 2.6rem var(--serif);
+}
+.panel > p {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+label {
+  display: block;
+  margin: 1rem 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+input {
+  display: block;
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.9rem;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.wide {
+  width: 100%;
+  border: 0;
+}
+.or {
+  margin: 1.6rem 0 1rem;
+  text-align: center;
+  border-top: 1px solid var(--line);
+}
+.or span {
+  position: relative;
+  top: -0.65rem;
+  padding: 0 0.8rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  background: #fffaf7;
+}
+.social {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+.social button {
+  padding: 0.8rem;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.switch {
+  display: block;
+  margin: 1.5rem auto 0;
+  color: var(--brown);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.error {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  color: #8a3e34;
+  font-size: 0.8rem;
+  background: #fbe8e5;
+  border-radius: 10px;
+}

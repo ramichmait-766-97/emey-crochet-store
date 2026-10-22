@@ -131,3 +131,127 @@ button:disabled {
     width: min(calc(100% - 24px), 1240px);
   }
 }
+/* Shared interaction and page primitives */
+main {
+  min-height: 55vh;
+}
+#main-content {
+  scroll-margin-top: 150px;
+}
+#story {
+  scroll-margin-top: 150px;
+}
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 1rem;
+  z-index: 100;
+  padding: 0.8rem 1rem;
+  background: var(--ink);
+  color: white;
+  border-radius: 8px;
+}
+.skip-link:focus {
+  top: 0.6rem;
+}
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-bottom: 2rem;
+}
+.breadcrumbs a:hover {
+  color: var(--brown);
+  text-decoration: underline;
+}
+.state-panel {
+  grid-column: 1 / -1;
+  padding: clamp(2rem, 5vw, 4rem);
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  text-align: center;
+}
+.state-panel h2 {
+  font: 500 2rem var(--serif);
+  margin: 0 0 0.8rem;
+}
+.state-panel p {
+  color: var(--muted);
+  line-height: 1.7;
+}
+.state-panel .btn {
+  margin-top: 1rem;
+}
+.text-button {
+  border: 0;
+  background: none;
+  color: var(--brown);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+.skeleton {
+  min-height: 320px;
+  background: linear-gradient(100deg, var(--soft), #fff8f2, var(--soft));
+  background-size: 200%;
+  border-radius: 18px;
+  animation: shimmer 1.6s linear infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.bag-notice:empty {
+  display: none;
+}
+.bag-notice:not(:empty) {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 1rem 1.5rem;
+  background: var(--ink);
+  color: white;
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+}
+.hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.7;
+}
+button,
+.btn {
+  min-height: 44px;
+}
+.btn {
+  border: 1px solid transparent;
+}
+@media (max-width: 720px) {
+  .skeleton-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.8rem;
+  }
+  .skeleton {
+    min-height: 240px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

@@ -9,7 +9,9 @@ export class CartService {
   private readonly linesState = signal<CartLine[]>(this.load());
 
   constructor() {
-    this.products.list().subscribe((catalog) => this.attachImages(catalog));
+    this.products.state$.subscribe((state) => {
+      if (!state.loading && !state.error) this.attachImages(state.products);
+    });
   }
 
   readonly lines = this.linesState.asReadonly();
@@ -17,14 +19,14 @@ export class CartService {
     this.linesState().reduce((total, line) => total + line.quantity, 0),
   );
   readonly subtotal = computed(() =>
-    this.linesState().reduce(
-      (total, line) => total + line.product.price * line.quantity,
-      0,
-    ),
+    this.linesState().reduce((total, line) => total + line.product.price * line.quantity, 0),
   );
 
+  readonly announcement = signal('');
+  private announcementTimer?: ReturnType<typeof setTimeout>;
+
   add(product: Product, quantity = 1): void {
-    if (product.quantity < 1 || quantity < 1) {
+    if (!product.active || product.quantity < 1 || !Number.isInteger(quantity) || quantity < 1) {
       return;
     }
 
@@ -32,22 +34,34 @@ export class CartService {
     const index = lines.findIndex((line) => line.product.id === product.id);
 
     if (index >= 0) {
+      if (lines[index].quantity >= product.quantity) {
+        this.announcement.set('All available stock of this piece is already in your bag.');
+        clearTimeout(this.announcementTimer);
+        this.announcementTimer = setTimeout(() => this.announcement.set(''), 4000);
+        return;
+      }
       lines[index] = {
         ...lines[index],
-        product: this.withoutImageBytes(product),
+        product,
         quantity: Math.min(lines[index].quantity + quantity, product.quantity),
       };
     } else {
       lines.push({
-        product: this.withoutImageBytes(product),
+        product,
         quantity: Math.min(quantity, product.quantity),
       });
     }
 
     this.persist(lines);
+    this.announcement.set(
+      `${product.name} added to your bag. ${this.count()} ${this.count() === 1 ? 'item' : 'items'} in total.`,
+    );
+    clearTimeout(this.announcementTimer);
+    this.announcementTimer = setTimeout(() => this.announcement.set(''), 4000);
   }
 
   setQuantity(productId: string, quantity: number): void {
+    if (!Number.isInteger(quantity)) return;
     const line = this.linesState().find((item) => item.product.id === productId);
     if (!line) {
       return;
@@ -80,7 +94,13 @@ export class CartService {
     this.linesState.update((lines) =>
       lines.map((line) => {
         const live = byId.get(line.product.id);
-        return live ? { ...line, product: this.withoutImageBytes(live) } : line;
+        return live
+          ? {
+              ...line,
+              quantity: live.quantity > 0 ? Math.min(line.quantity, live.quantity) : line.quantity,
+              product: live,
+            }
+          : { ...line, product: { ...line.product, active: false, quantity: 0 } };
       }),
     );
   }
@@ -90,10 +110,14 @@ export class CartService {
       ...line,
       product: this.withoutImageBytes(line.product),
     }));
-    this.linesState.set(slim);
+    this.linesState.set(lines);
 
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(this.storageKey, JSON.stringify(slim));
+      try {
+        localStorage.setItem(this.storageKey, JSON.stringify(slim));
+      } catch {
+        /* Keep the in-memory bag usable when storage is full or blocked. */
+      }
     }
   }
 
@@ -104,15 +128,33 @@ export class CartService {
 
     try {
       const parsed = JSON.parse(localStorage.getItem(this.storageKey) ?? '[]');
-      return Array.isArray(parsed) ? parsed : [];
+      return Array.isArray(parsed)
+        ? parsed.filter(
+            (line) =>
+              line?.product &&
+              typeof line.product.id === 'string' &&
+              typeof line.product.name === 'string' &&
+              Number.isFinite(line.product.price) &&
+              Number.isInteger(line.quantity) &&
+              line.quantity > 0,
+          )
+        : [];
     } catch {
-      localStorage.removeItem(this.storageKey);
+      try {
+        localStorage.removeItem(this.storageKey);
+      } catch {
+        /* Storage may be blocked. */
+      }
       return [];
     }
   }
 
   private withoutImageBytes(product: Product): Product {
     const { imageData: _imageData, ...rest } = product;
-    return { ...rest, imageData: undefined };
+    return {
+      ...rest,
+      imageUrl: rest.imageUrl?.startsWith('data:') ? '' : rest.imageUrl,
+      imageData: undefined,
+    };
   }
 }

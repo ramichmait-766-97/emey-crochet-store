@@ -13,7 +13,9 @@
       <div class="meta">
         <div>
           <small>{{ item.category }}</small>
-          <a [routerLink]="['/product', item.slug]"><h3>{{ item.name }}</h3></a>
+          <a [routerLink]="['/product', item.slug]">
+            <h3>{{ item.name }}</h3>
+          </a>
         </div>
         <b>{{ item.price | currency: site.currency : 'symbol' : '1.2-2' }}</b>
       </div>

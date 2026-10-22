@@ -1,28 +1,71 @@
 <section class="shell admin">
   <div class="title">
-    <div><span class="eyebrow">ADMIN</span><h1>Store management</h1></div>
-    @if (tab === 'products') { <button class="btn primary" type="button" (click)="openNew()">+ New product</button> }
+    <div>
+      <span class="eyebrow">ADMIN</span>
+      <h1>Store management</h1>
+    </div>
+    @if (tab === 'products') {
+      <button class="btn primary" type="button" (click)="openNew()">+ New product</button>
+    }
   </div>
 
+  <nav class="admin-links" aria-label="Store shortcuts">
+    <a routerLink="/shop">View storefront →</a>
+    <a routerLink="/account">Your profile →</a>
+  </nav>
   <div class="tabs" role="tablist">
-    <button type="button" [class.active]="tab === 'products'" (click)="tab = 'products'">Products</button>
-    <button type="button" [class.active]="tab === 'settings'" (click)="tab = 'settings'">Store settings</button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="tab === 'products'"
+      [class.active]="tab === 'products'"
+      (click)="tab = 'products'"
+    >
+      Products
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="tab === 'settings'"
+      [class.active]="tab === 'settings'"
+      (click)="tab = 'settings'"
+    >
+      Store settings
+    </button>
   </div>
 
   @if (environment.demoMode) {
-    <div class="demo">Demo mode is active. Browsing works normally, but admin writes are intentionally disabled until Firebase is configured.</div>
+    <div class="demo">
+      Demo mode is active. Browsing works normally, but admin writes are intentionally disabled
+      until Firebase is configured.
+    </div>
   }
-  @if (error) { <div class="message error">{{ error }}</div> }
-  @if (notice) { <div class="message success">{{ notice }}</div> }
+  @if (admin.loadError()) {
+    <p class="message error" role="alert">{{ admin.loadError() }}</p>
+  }
+  @if (error) {
+    <div class="message error">{{ error }}</div>
+  }
+  @if (notice) {
+    <div class="message success">{{ notice }}</div>
+  }
 
   @if (tab === 'products') {
     <div class="layout">
       <div class="table">
-        <div class="thead"><span>Product</span><span>Price</span><span>Stock</span><span>Status</span></div>
+        <div class="thead">
+          <span>Product</span>
+          <span>Price</span>
+          <span>Stock</span>
+          <span>Status</span>
+        </div>
         @for (product of admin.products$ | async; track product.id) {
           <button class="row" type="button" (click)="edit(product)">
-            <span class="prod"><img [src]="product.imageUrl" [alt]="product.name" /><b>{{ product.name }}</b></span>
-            <span>{{ product.price | currency: (settingsDraft?.currency || 'USD') }}</span>
+            <span class="prod">
+              <img [src]="product.imageUrl" [alt]="product.name" />
+              <b>{{ product.name }}</b>
+            </span>
+            <span>{{ product.price | currency: settingsDraft?.currency || 'USD' }}</span>
             <span>{{ product.quantity }}</span>
             <span>{{ product.active ? 'Active' : 'Hidden' }}</span>
           </button>
@@ -31,38 +74,138 @@
 
       @if (showEditor) {
         <aside>
-          <div class="editor-head"><h2>{{ draft.createdAt ? 'Edit product' : 'New product' }}</h2><button type="button" (click)="closeEditor()">×</button></div>
-          <label>ID<input [(ngModel)]="draft.id" [disabled]="!!draft.createdAt" /></label>
-          <label>Name<input [(ngModel)]="draft.name" /></label>
-          <label>Slug<input [(ngModel)]="draft.slug" placeholder="Auto-generated from name if empty" /></label>
-          <label>Category<select [(ngModel)]="draft.category">@for (category of categories; track category) { <option [value]="category">{{ category }}</option> }</select></label>
-          <label>Description<textarea [(ngModel)]="draft.description"></textarea></label>
-          <label>Colors<input [ngModel]="draft.colors.join(', ')" (ngModelChange)="colorsChanged($event)" placeholder="Cream, Rose, Olive" /></label>
-          <div class="two"><label>Price<input type="number" min="0" step="0.01" [(ngModel)]="draft.price" /></label><label>Quantity<input type="number" min="0" step="1" [(ngModel)]="draft.quantity" /></label></div>
-          <div class="checks"><label><input type="checkbox" [(ngModel)]="draft.bestSeller" /> Best seller</label><label><input type="checkbox" [(ngModel)]="draft.newArrival" /> New arrival</label><label><input type="checkbox" [(ngModel)]="draft.active" /> Active</label></div>
-          <label>Product image<input type="file" accept="image/*" (change)="pickFile($event)" /></label>
-          <button class="btn primary wide" type="button" [disabled]="saving || environment.demoMode" (click)="saveProduct()">{{ saving ? 'Saving…' : 'Save product' }}</button>
+          <div class="editor-head">
+            <h2>{{ draft.createdAt ? 'Edit product' : 'New product' }}</h2>
+            <button type="button" aria-label="Close product editor" (click)="closeEditor()">
+              ×
+            </button>
+          </div>
+          <label>
+            ID
+            <input [(ngModel)]="draft.id" [disabled]="!!draft.createdAt" />
+          </label>
+          <label>
+            Name
+            <input [(ngModel)]="draft.name" />
+          </label>
+          <label>
+            Slug
+            <input [(ngModel)]="draft.slug" placeholder="Auto-generated from name if empty" />
+          </label>
+          <label>
+            Category
+            <select [(ngModel)]="draft.category">
+              @for (category of categories; track category) {
+                <option [value]="category">{{ category }}</option>
+              }
+            </select>
+          </label>
+          <label>
+            Description
+            <textarea [(ngModel)]="draft.description"></textarea>
+          </label>
+          <label>
+            Colors
+            <input
+              [ngModel]="draft.colors.join(', ')"
+              (ngModelChange)="colorsChanged($event)"
+              placeholder="Cream, Rose, Olive"
+            />
+          </label>
+          <div class="two">
+            <label>
+              Price
+              <input type="number" min="0" step="0.01" [(ngModel)]="draft.price" />
+            </label>
+            <label>
+              Quantity
+              <input type="number" min="0" step="1" [(ngModel)]="draft.quantity" />
+            </label>
+          </div>
+          <div class="checks">
+            <label>
+              <input type="checkbox" [(ngModel)]="draft.bestSeller" />
+              Best seller
+            </label>
+            <label>
+              <input type="checkbox" [(ngModel)]="draft.newArrival" />
+              New arrival
+            </label>
+            <label>
+              <input type="checkbox" [(ngModel)]="draft.active" />
+              Active
+            </label>
+          </div>
+          <label>
+            Product image (WebP, JPG or PNG, up to 700 KB)
+            <input type="file" accept="image/*" (change)="pickFile($event)" />
+          </label>
+          <button
+            class="btn primary wide"
+            type="button"
+            [disabled]="saving || environment.demoMode"
+            (click)="saveProduct()"
+          >
+            {{ saving ? 'Saving…' : 'Save product' }}
+          </button>
         </aside>
       }
     </div>
   } @else {
     @if (settingsDraft; as settings) {
-        <div class="settings-card">
-          <div class="two"><label>Store name<input [(ngModel)]="settings.storeName" /></label><label>Currency<input [(ngModel)]="settings.currency" maxlength="3" /></label></div>
-          <label>Member discount %<input type="number" min="0" max="100" [(ngModel)]="settings.memberDiscountPercent" /></label>
-          <div class="contact-head"><h2>Contact methods</h2><button class="btn ghost" type="button" (click)="addContact()">+ Add contact</button></div>
-          @for (contact of settings.contacts; track contact.id) {
-            <div class="contact-row">
-              <select [(ngModel)]="contact.type"><option value="whatsapp">WhatsApp</option><option value="phone">Phone</option><option value="instagram">Instagram</option><option value="email">Email</option><option value="custom">Custom</option></select>
-              <input [(ngModel)]="contact.label" placeholder="Label" />
-              <input [(ngModel)]="contact.value" placeholder="Value" />
-              <input [(ngModel)]="contact.url" placeholder="URL" />
-              <label class="enabled"><input type="checkbox" [(ngModel)]="contact.enabled" /> Enabled</label>
-              <button class="remove-contact" type="button" (click)="removeContact(contact.id)">Remove</button>
-            </div>
-          }
-          <button class="btn primary" type="button" [disabled]="saving || environment.demoMode" (click)="saveSettings()">{{ saving ? 'Saving…' : 'Save settings' }}</button>
+      <div class="settings-card">
+        <p class="hint">
+          Set a real WhatsApp number with country code to accept order requests. Prices and
+          availability are confirmed with the customer before payment.
+        </p>
+        <div class="two">
+          <label>
+            Store name
+            <input [(ngModel)]="settings.storeName" />
+          </label>
+          <label>
+            Currency
+            <input [(ngModel)]="settings.currency" maxlength="3" />
+          </label>
         </div>
+        <label>
+          Member discount %
+          <input type="number" min="0" max="100" [(ngModel)]="settings.memberDiscountPercent" />
+        </label>
+        <div class="contact-head">
+          <h2>Contact methods</h2>
+          <button class="btn ghost" type="button" (click)="addContact()">+ Add contact</button>
+        </div>
+        @for (contact of settings.contacts; track contact.id) {
+          <div class="contact-row">
+            <select [(ngModel)]="contact.type">
+              <option value="whatsapp">WhatsApp</option>
+              <option value="phone">Phone</option>
+              <option value="instagram">Instagram</option>
+              <option value="email">Email</option>
+              <option value="custom">Custom</option>
+            </select>
+            <input [(ngModel)]="contact.label" placeholder="Label" />
+            <input [(ngModel)]="contact.value" placeholder="Value" />
+            <input [(ngModel)]="contact.url" placeholder="URL" />
+            <label class="enabled">
+              <input type="checkbox" [(ngModel)]="contact.enabled" />
+              Enabled
+            </label>
+            <button class="remove-contact" type="button" (click)="removeContact(contact.id)">
+              Remove
+            </button>
+          </div>
+        }
+        <button
+          class="btn primary"
+          type="button"
+          [disabled]="saving || environment.demoMode"
+          (click)="saveSettings()"
+        >
+          {{ saving ? 'Saving…' : 'Save settings' }}
+        </button>
+      </div>
     }
   }
 </section>

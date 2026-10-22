@@ -10,6 +10,35 @@ service cloud.firestore {
       return signedIn() && request.auth.token.admin == true;
     }
 
+    function optionalText(data, field, limit) {
+      return !(field in data) || (data[field] is string && data[field].size() <= limit);
+    }
+
+    function validProfile(data) {
+      return data.keys().hasOnly(['uid', 'email', 'displayName', 'phone', 'billing',
+        'notifications', 'notificationPreferencesUpdatedAt', 'createdAt', 'modifiedAt'])
+        && optionalText(data, 'displayName', 120)
+        && optionalText(data, 'phone', 40)
+        && (!('billing' in data) || (
+          data.billing is map
+          && data.billing.keys().hasOnly(['fullName', 'company', 'taxId', 'addressLine1',
+            'addressLine2', 'city', 'region', 'postalCode', 'country'])
+          && optionalText(data.billing, 'fullName', 120)
+          && optionalText(data.billing, 'company', 120)
+          && optionalText(data.billing, 'taxId', 60)
+          && optionalText(data.billing, 'addressLine1', 200)
+          && optionalText(data.billing, 'addressLine2', 200)
+          && optionalText(data.billing, 'city', 100)
+          && optionalText(data.billing, 'region', 100)
+          && optionalText(data.billing, 'postalCode', 30)
+          && optionalText(data.billing, 'country', 100)))
+        && (!('notifications' in data) || (
+          data.notifications is map
+          && data.notifications.keys().hasOnly(['orderUpdates', 'emailOffers'])
+          && data.notifications.orderUpdates is bool
+          && data.notifications.emailOffers is bool));
+    }
+
     match /products/{productId} {
       allow read: if resource.data.active == true || admin();
       allow create, update, delete: if admin();
@@ -28,11 +57,13 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == userId || admin());
 
       allow create: if signedIn()
+        && validProfile(request.resource.data)
         && request.auth.uid == userId
         && request.resource.data.uid == request.auth.uid
         && !request.resource.data.keys().hasAny(['role', 'admin']);
 
       allow update: if signedIn()
+        && validProfile(request.resource.data)
         && request.auth.uid == userId
         && request.resource.data.uid == resource.data.uid
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'admin', 'uid']);

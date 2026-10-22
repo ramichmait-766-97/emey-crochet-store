@@ -1,18 +1,229 @@
 <section class="shell account">
-  @if (auth.user$ | async; as user) {
-    <span class="eyebrow">MY EMEY</span>
-    <h1>Hello, {{ user.displayName || 'there' }}.</h1>
-
-    <div class="cards">
-      @if (settings.settings$ | async; as site) {
-        <article class="benefit">
-          <h3>Member benefit</h3>
-          <b>{{ site.memberDiscountPercent }}% off</b>
-          <p>Your member discount is automatically verified on website orders.</p>
-        </article>
+  @if (user(); as customer) {
+    <div class="heading">
+      <div>
+        <span class="eyebrow">MY EMEY</span>
+        <h1>Your account</h1>
+        <p>Personal details, billing and preferences, all in one place.</p>
+      </div>
+      @if (customer.role === 'admin') {
+        <a class="btn ghost" routerLink="/admin">Manage store →</a>
       }
-      <article><h3>Order history</h3><p>Your Firebase-connected orders will appear here once the project is configured.</p></article>
-      <article><h3>Profile</h3><p>{{ user.email }}</p><p>Role: {{ user.role }}</p>@if (user.role === 'admin') { <a routerLink="/admin">Open store management →</a> }</article>
     </div>
+    @if (notice()) {
+      <p class="message success" role="status">{{ notice() }}</p>
+    }
+    @if (error()) {
+      <div class="message error" role="alert">
+        {{ error() }}
+        @if (loadFailed()) {
+          <button type="button" (click)="retry()" [disabled]="loading()">Reload profile</button>
+        }
+      </div>
+    }
+    @if (loading()) {
+      <p role="status">Loading your profile…</p>
+    } @else {
+      <div class="account-layout">
+        <form #profileForm="ngForm" (ngSubmit)="profileForm.valid && save()">
+          <fieldset [disabled]="saving() || loadFailed()">
+            <article>
+              <span class="eyebrow">01 / PERSONAL</span>
+              <h2>Profile details</h2>
+              <div class="fields">
+                <label>
+                  Full name
+                  <input
+                    name="displayName"
+                    [(ngModel)]="profile.displayName"
+                    autocomplete="name"
+                    required
+                    maxlength="120"
+                    pattern=".*\S.*"
+                  />
+                </label>
+                <label>
+                  Phone / WhatsApp
+                  <input
+                    name="phone"
+                    [(ngModel)]="profile.phone"
+                    autocomplete="tel"
+                    type="tel"
+                    maxlength="40"
+                  />
+                </label>
+                <label class="full">
+                  Sign-in email
+                  <input [value]="customer.email" readonly type="email" />
+                  <small>Your email is managed through your sign-in account.</small>
+                </label>
+              </div>
+            </article>
+            <article>
+              <span class="eyebrow">02 / BILLING</span>
+              <h2>Billing information</h2>
+              <p>Optional details for your invoices and future orders.</p>
+              <div class="fields">
+                <label>
+                  Billing name
+                  <input
+                    name="billingName"
+                    [(ngModel)]="profile.billing.fullName"
+                    autocomplete="billing name"
+                    maxlength="120"
+                  />
+                </label>
+                <label>
+                  Company
+                  <input
+                    name="company"
+                    [(ngModel)]="profile.billing.company"
+                    autocomplete="billing organization"
+                    maxlength="120"
+                  />
+                </label>
+                <label class="full">
+                  Tax / VAT number
+                  <span>(optional)</span>
+                  <input name="taxId" [(ngModel)]="profile.billing.taxId" maxlength="60" />
+                </label>
+                <label class="full">
+                  Street address
+                  <input
+                    name="address1"
+                    [(ngModel)]="profile.billing.addressLine1"
+                    autocomplete="billing address-line1"
+                    maxlength="200"
+                  />
+                </label>
+                <label class="full">
+                  Apartment, building or floor
+                  <input
+                    name="address2"
+                    [(ngModel)]="profile.billing.addressLine2"
+                    autocomplete="billing address-line2"
+                    maxlength="200"
+                  />
+                </label>
+                <label>
+                  City
+                  <input
+                    name="city"
+                    [(ngModel)]="profile.billing.city"
+                    autocomplete="billing address-level2"
+                    maxlength="100"
+                  />
+                </label>
+                <label>
+                  State / region
+                  <input
+                    name="region"
+                    [(ngModel)]="profile.billing.region"
+                    autocomplete="billing address-level1"
+                    maxlength="100"
+                  />
+                </label>
+                <label>
+                  Postal code
+                  <input
+                    name="postalCode"
+                    [(ngModel)]="profile.billing.postalCode"
+                    autocomplete="billing postal-code"
+                    maxlength="30"
+                  />
+                </label>
+                <label>
+                  Country
+                  <input
+                    name="country"
+                    [(ngModel)]="profile.billing.country"
+                    autocomplete="billing country-name"
+                    maxlength="100"
+                  />
+                </label>
+              </div>
+              <small>Payment card details are not stored in your profile.</small>
+            </article>
+            <article>
+              <span class="eyebrow">03 / PREFERENCES</span>
+              <h2>Keep in touch</h2>
+              <label class="check">
+                <input
+                  type="checkbox"
+                  name="orderUpdates"
+                  [(ngModel)]="profile.notifications.orderUpdates"
+                />
+                <span>
+                  Order updates
+                  <small>I'd like to receive updates about my orders.</small>
+                </span>
+              </label>
+              <label class="check">
+                <input
+                  type="checkbox"
+                  name="emailOffers"
+                  [(ngModel)]="profile.notifications.emailOffers"
+                />
+                <span>
+                  News and offers
+                  <small>I'd like to receive new arrivals and occasional offers by email.</small>
+                </span>
+              </label>
+              <p class="hint">
+                We save your preferences here. Automated notification delivery is not available yet.
+              </p>
+            </article>
+          </fieldset>
+          <button
+            class="btn primary"
+            type="submit"
+            [disabled]="saving() || profileForm.invalid || loadFailed()"
+          >
+            {{ saving() ? 'Saving…' : 'Save changes' }}
+          </button>
+        </form>
+        <aside>
+          <article>
+            <h2>Account security</h2>
+            <p>{{ customer.email }}</p>
+            <span class="badge">{{ verified() ? 'Email verified' : 'Email not verified' }}</span>
+            @if (!verified()) {
+              <button
+                class="btn ghost"
+                type="button"
+                [disabled]="securityBusy()"
+                (click)="security('verify')"
+              >
+                Send verification email
+              </button>
+              <button
+                class="text-button"
+                type="button"
+                [disabled]="securityBusy()"
+                (click)="security('refresh')"
+              >
+                Check verification
+              </button>
+            }
+            <button
+              class="btn ghost"
+              type="button"
+              [disabled]="securityBusy()"
+              (click)="security('password')"
+            >
+              Reset password
+            </button>
+          </article>
+          @if (settings.settings$ | async; as site) {
+            <article class="benefit">
+              <h2>A little thank you</h2>
+              <b>{{ site.memberDiscountPercent }}% off</b>
+              <p>Your member discount is applied to eligible website orders.</p>
+              <a routerLink="/shop">Explore the collection →</a>
+            </article>
+          }
+        </aside>
+      </div>
+    }
   }
 </section>
