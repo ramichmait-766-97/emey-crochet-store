@@ -3,12 +3,13 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { combineLatest, map, switchMap } from 'rxjs';
 import { CartService } from '../../core/services/cart.service';
+import { ProductImagePipe } from '../../shared/pipes/product-image.pipe';
 import { ProductService } from '../../core/services/product.service';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
 
 @Component({
   standalone: true,
-  imports: [AsyncPipe, CurrencyPipe, RouterLink],
+  imports: [AsyncPipe, CurrencyPipe, RouterLink, ProductImagePipe],
   templateUrl: './product-detail.component.html',
   styleUrl: './product-detail.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -17,7 +17,8 @@
     "functions:build": "npm --prefix functions run build",
     "firebase:emulators": "firebase emulators:start",
     "firebase:deploy": "npm run build:prod && npm run functions:build && firebase deploy",
-    "admin:set": "node functions/scripts/set-admin.mjs"
+    "admin:set": "node functions/scripts/set-admin.mjs",
+    "products:seed": "node functions/scripts/seed-products.mjs"
   },
   "dependencies": {
     "@angular/common": "^20.3.33",

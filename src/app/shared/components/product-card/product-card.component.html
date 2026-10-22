@@ -2,7 +2,7 @@
   @if (settings.settings$ | async; as site) {
     <article>
       <a class="image" [routerLink]="['/product', item.slug]">
-        <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" decoding="async" />
+        <img [src]="item | productImage" [alt]="item.name" loading="lazy" decoding="async" />
         @if (item.newArrival) {
           <span class="badge">New</span>
         } @else if (item.bestSeller) {

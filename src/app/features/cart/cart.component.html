@@ -8,7 +8,7 @@
         <div class="lines">
           @for (line of cart.lines(); track line.product.id) {
             <div class="line">
-              <img [src]="line.product.imageUrl" [alt]="line.product.name" />
+              <img [src]="line.product | productImage" [alt]="line.product.name" />
               <div class="grow">
                 <b>{{ line.product.name }}</b>
                 <span>{{ line.product.price | currency: site.currency }} each</span>

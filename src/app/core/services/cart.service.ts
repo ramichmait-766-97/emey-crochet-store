@@ -1,10 +1,16 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { CartLine, Product } from '../models/product.model';
+import { ProductService } from './product.service';
 
 @Injectable({ providedIn: 'root' })
 export class CartService {
-  private readonly storageKey = 'emey-cart-v1';
+  private readonly storageKey = 'emey-cart-v2';
+  private readonly products = inject(ProductService);
   private readonly linesState = signal<CartLine[]>(this.load());
+
+  constructor() {
+    this.products.list().subscribe((catalog) => this.attachImages(catalog));
+  }
 
   readonly lines = this.linesState.asReadonly();
   readonly count = computed(() =>
@@ -28,11 +34,14 @@ export class CartService {
     if (index >= 0) {
       lines[index] = {
         ...lines[index],
-        product,
+        product: this.withoutImageBytes(product),
         quantity: Math.min(lines[index].quantity + quantity, product.quantity),
       };
     } else {
-      lines.push({ product, quantity: Math.min(quantity, product.quantity) });
+      lines.push({
+        product: this.withoutImageBytes(product),
+        quantity: Math.min(quantity, product.quantity),
+      });
     }
 
     this.persist(lines);
@@ -66,11 +75,25 @@ export class CartService {
     this.persist([]);
   }
 
+  attachImages(products: Product[]): void {
+    const byId = new Map(products.map((product) => [product.id, product]));
+    this.linesState.update((lines) =>
+      lines.map((line) => {
+        const live = byId.get(line.product.id);
+        return live ? { ...line, product: this.withoutImageBytes(live) } : line;
+      }),
+    );
+  }
+
   private persist(lines: CartLine[]): void {
-    this.linesState.set(lines);
+    const slim = lines.map((line) => ({
+      ...line,
+      product: this.withoutImageBytes(line.product),
+    }));
+    this.linesState.set(slim);
 
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(this.storageKey, JSON.stringify(lines));
+      localStorage.setItem(this.storageKey, JSON.stringify(slim));
     }
   }
 
@@ -86,5 +109,10 @@ export class CartService {
       localStorage.removeItem(this.storageKey);
       return [];
     }
+  }
+
+  private withoutImageBytes(product: Product): Product {
+    const { imageData: _imageData, ...rest } = product;
+    return { ...rest, imageData: undefined };
   }
 }

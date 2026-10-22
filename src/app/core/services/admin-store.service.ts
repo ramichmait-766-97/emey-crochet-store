@@ -1,10 +1,18 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, collectionData, doc, serverTimestamp, setDoc } from '@angular/fire/firestore';
-import { Storage, getDownloadURL, ref, uploadBytes } from '@angular/fire/storage';
-import { Observable, of, shareReplay } from 'rxjs';
+import {
+  Bytes,
+  Firestore,
+  collection,
+  collectionData,
+  doc,
+  serverTimestamp,
+  setDoc,
+} from '@angular/fire/firestore';
+import { Observable, map, of, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Product } from '../models/product.model';
 import { SiteSettings } from '../models/site-settings.model';
+import { MAX_PRODUCT_IMAGE_BYTES, productImageSrc } from '../utils/product-image';
 import { SEED_PRODUCTS } from './seed-products';
 
 export type ProductDraft = Omit<Product, 'createdAt' | 'modifiedAt'> & {
@@ -15,7 +23,6 @@ export type ProductDraft = Omit<Product, 'createdAt' | 'modifiedAt'> & {
 @Injectable({ providedIn: 'root' })
 export class AdminStoreService {
   private readonly firestore = inject(Firestore);
-  private readonly storage = inject(Storage);
 
   readonly products$ = this.createProductStream();
 
@@ -25,22 +32,31 @@ export class AdminStoreService {
     }
 
     const id = this.normalizeId(draft.id);
-    const imageUrl = file ? await this.uploadProductImage(id, file) : draft.imageUrl;
     const productRef = doc(this.firestore, `products/${id}`);
+    const imagePayload = file ? await this.imageBytesFromFile(file) : null;
+
+    if (!file && !draft.imageData && !draft.imageUrl) {
+      throw new Error('Please choose a product image.');
+    }
 
     await setDoc(
       productRef,
       {
-        ...draft,
         id,
         slug: this.slugify(draft.slug || draft.name),
-        imageUrl,
-        gallery: draft.gallery?.length ? draft.gallery : imageUrl ? [imageUrl] : [],
+        name: draft.name.trim(),
+        category: draft.category,
+        description: draft.description.trim(),
         colors: draft.colors ?? [],
+        gallery: [],
         price: Number(draft.price),
         quantity: Math.max(0, Math.floor(Number(draft.quantity))),
+        bestSeller: !!draft.bestSeller,
+        newArrival: !!draft.newArrival,
+        active: !!draft.active,
         createdAt: draft.createdAt ?? serverTimestamp(),
         modifiedAt: serverTimestamp(),
+        ...(imagePayload ?? {}),
       },
       { merge: true },
     );
@@ -69,21 +85,37 @@ export class AdminStoreService {
 
     return (collectionData(collection(this.firestore, 'products'), {
       idField: 'id',
-    }) as Observable<Product[]>).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    }) as Observable<Product[]>).pipe(
+      map((products) =>
+        products.map((product) => ({
+          ...product,
+          imageUrl: productImageSrc(product),
+          gallery: product.gallery ?? [],
+          colors: product.colors ?? [],
+        })),
+      ),
+      shareReplay({ bufferSize: 1, refCount: true }),
+    );
   }
 
-  private async uploadProductImage(productId: string, file: File): Promise<string> {
+  private async imageBytesFromFile(file: File): Promise<{
+    imageData: Bytes;
+    imageContentType: string;
+  }> {
     if (!file.type.startsWith('image/')) {
       throw new Error('Please choose a valid image file.');
     }
-    if (file.size > 8 * 1024 * 1024) {
-      throw new Error('Product images must be smaller than 8 MB.');
+    if (file.size > MAX_PRODUCT_IMAGE_BYTES) {
+      throw new Error(
+        'Product images must be smaller than 700 KB so they fit in a Firestore document.',
+      );
     }
 
-    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const imageRef = ref(this.storage, `products/${productId}/${Date.now()}.${extension}`);
-    await uploadBytes(imageRef, file, { contentType: file.type });
-    return getDownloadURL(imageRef);
+    const buffer = await file.arrayBuffer();
+    return {
+      imageData: Bytes.fromUint8Array(new Uint8Array(buffer)),
+      imageContentType: file.type,
+    };
   }
 
   private normalizeId(value: string): string {

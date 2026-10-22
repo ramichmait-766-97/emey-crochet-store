@@ -8,10 +8,12 @@ import { ContactMethod, SiteSettings } from '../../core/models/site-settings.mod
 import { AdminStoreService, ProductDraft } from '../../core/services/admin-store.service';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { environment } from '../../../environments/environment';
+import { productImageSrc } from '../../core/utils/product-image';
+import { ProductImagePipe } from '../../shared/pipes/product-image.pipe';
 
 @Component({
   standalone: true,
-  imports: [AsyncPipe, CurrencyPipe, FormsModule],
+  imports: [AsyncPipe, CurrencyPipe, FormsModule, ProductImagePipe],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,6 +30,7 @@ export class AdminComponent implements OnInit {
   error = '';
   notice = '';
   selectedFile?: File;
+  selectedPreview = '';
   draft: ProductDraft = this.emptyProduct();
   settingsDraft?: SiteSettings;
 
@@ -39,6 +42,7 @@ export class AdminComponent implements OnInit {
   openNew(): void {
     this.draft = this.emptyProduct();
     this.selectedFile = undefined;
+    this.selectedPreview = '';
     this.showEditor = true;
     this.clearMessages();
   }
@@ -46,6 +50,7 @@ export class AdminComponent implements OnInit {
   edit(product: Product): void {
     this.draft = { ...product, gallery: [...product.gallery], colors: [...product.colors] };
     this.selectedFile = undefined;
+    this.selectedPreview = '';
     this.showEditor = true;
     this.clearMessages();
   }
@@ -53,10 +58,25 @@ export class AdminComponent implements OnInit {
   closeEditor(): void {
     this.showEditor = false;
     this.selectedFile = undefined;
+    this.selectedPreview = '';
   }
 
   pickFile(event: Event): void {
     this.selectedFile = (event.target as HTMLInputElement).files?.[0];
+    this.selectedPreview = '';
+    if (!this.selectedFile) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.selectedPreview = typeof reader.result === 'string' ? reader.result : '';
+    };
+    reader.readAsDataURL(this.selectedFile);
+  }
+
+  currentImage(product: Product): string {
+    return this.selectedPreview || productImageSrc(product);
   }
 
   colorsChanged(value: string): void {

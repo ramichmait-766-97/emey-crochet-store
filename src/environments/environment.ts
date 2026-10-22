@@ -1,6 +1,7 @@
 export const environment = {
-  production: false,
-  demoMode: true,
+  production: true,
+  demoMode: false,
+  firestoreDatabase: 'maindb',
   firebase: {
     apiKey: "AIzaSyAlSg_gD4KZzgQ2S_zX2e5FjnYjW-zGNdY",
     authDomain: "emey-crochet-store.firebaseapp.com",

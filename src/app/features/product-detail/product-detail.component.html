@@ -2,7 +2,7 @@
   @if (vm.product; as product) {
     <section class="shell detail">
       <div class="image">
-        <img [src]="product.imageUrl" [alt]="product.name" />
+        <img [src]="product | productImage" [alt]="product.name" />
       </div>
 
       <div class="info">

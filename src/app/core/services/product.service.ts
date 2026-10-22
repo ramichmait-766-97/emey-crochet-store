@@ -11,6 +11,7 @@ import {
 import { Observable, map, of, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Product } from '../models/product.model';
+import { productImageSrc } from '../utils/product-image';
 import { SEED_PRODUCTS } from './seed-products';
 
 @Injectable({ providedIn: 'root' })
@@ -45,9 +46,11 @@ export class ProductService {
       return of(SEED_PRODUCTS.find((product) => product.id === id));
     }
 
-    return docData(doc(this.firestore, `products/${id}`), { idField: 'id' }) as Observable<
-      Product | undefined
-    >;
+    return (
+      docData(doc(this.firestore, `products/${id}`), { idField: 'id' }) as Observable<
+        Product | undefined
+      >
+    ).pipe(map((product) => (product ? this.withDisplayImage(product) : product)));
   }
 
   private createProductStream(): Observable<Product[]> {
@@ -61,7 +64,17 @@ export class ProductService {
     );
 
     return (collectionData(productsQuery, { idField: 'id' }) as Observable<Product[]>).pipe(
+      map((products) => products.map((product) => this.withDisplayImage(product))),
       shareReplay({ bufferSize: 1, refCount: true }),
     );
+  }
+
+  private withDisplayImage(product: Product): Product {
+    return {
+      ...product,
+      imageUrl: productImageSrc(product),
+      gallery: product.gallery ?? [],
+      colors: product.colors ?? [],
+    };
   }
 }

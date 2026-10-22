@@ -3,7 +3,7 @@ import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
 initializeApp();
-const db = getFirestore();
+const db = getFirestore('maindb');
 
 interface CreateOrderItem {
   productId: string;

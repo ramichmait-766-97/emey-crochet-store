@@ -1,6 +1,7 @@
 import { AsyncPipe, CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ProductImagePipe } from '../../shared/pipes/product-image.pipe';
 import { firstValueFrom } from 'rxjs';
 import { CheckoutContact, OrderResult } from '../../core/models/order.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -10,7 +11,7 @@ import { SiteSettingsService } from '../../core/services/site-settings.service';
 
 @Component({
   standalone: true,
-  imports: [AsyncPipe, CurrencyPipe, FormsModule],
+  imports: [AsyncPipe, CurrencyPipe, FormsModule, ProductImagePipe],
   templateUrl: './cart.component.html',
   styleUrl: './cart.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
