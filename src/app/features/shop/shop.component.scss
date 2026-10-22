@@ -1,0 +1,11 @@
+.shop { padding-top: 5rem; }
+.intro { max-width: 760px; margin: auto; text-align: center; }
+.intro h1 { margin: 1rem 0; font: 500 clamp(2.8rem, 5vw, 5rem) var(--serif); }
+.intro p, .count { color: var(--muted); }
+.toolbar { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: .8rem; margin: 4rem 0 1rem; }
+.toolbar input, .toolbar select { padding: 1rem 1.1rem; color: var(--ink); background: #fffaf5; border: 1px solid var(--line); border-radius: 14px; }
+.count { margin: 1.4rem 0; font-size: .8rem; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.6rem; }
+.empty { grid-column: 1 / -1; padding: 3rem; color: var(--muted); text-align: center; background: var(--soft); border-radius: 18px; }
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } .toolbar { grid-template-columns: 1fr 1fr; } .toolbar input { grid-column: span 2; } }
+@media (max-width: 560px) { .grid, .toolbar { grid-template-columns: 1fr; } .toolbar input { grid-column: auto; } }

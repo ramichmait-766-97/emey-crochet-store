@@ -1,0 +1,31 @@
+<footer>
+  <div class="shell grid">
+    <div>
+      <div class="word">Emey</div>
+      <p>Handmade slowly. Chosen beautifully. Crochet pieces designed to bring warmth into everyday moments.</p>
+    </div>
+
+    <div>
+      <h4>Explore</h4>
+      <a routerLink="/shop">Shop all</a>
+      <a routerLink="/shop" [queryParams]="{ sort: 'new' }">New arrivals</a>
+      <a routerLink="/shop" [queryParams]="{ sort: 'featured' }">Best sellers</a>
+    </div>
+
+    <div>
+      <h4>Contact</h4>
+      @if (settings.settings$ | async; as site) {
+        @for (contact of site.contacts; track contact.id) {
+          @if (contact.enabled) {
+            <a [href]="contact.url || '#'" target="_blank" rel="noopener noreferrer">{{ contact.label }}</a>
+          }
+        }
+      }
+    </div>
+  </div>
+
+  <div class="shell bottom">
+    <span>© {{ year }} Emey Crochet Store</span>
+    <span>Made with care.</span>
+  </div>
+</footer>

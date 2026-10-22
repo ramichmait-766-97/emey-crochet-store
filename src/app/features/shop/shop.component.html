@@ -1,0 +1,39 @@
+<section class="shell shop">
+  <div class="intro">
+    <span class="eyebrow">THE COLLECTION</span>
+    <h1>Handmade, thoughtfully.</h1>
+    <p>Explore pieces designed for wearing, gifting and living beautifully.</p>
+  </div>
+
+  <div class="toolbar">
+    <label class="sr-only" for="search">Search pieces</label>
+    <input id="search" [(ngModel)]="search" (ngModelChange)="setSearch($event)" placeholder="Search pieces…" />
+
+    <label class="sr-only" for="category">Category</label>
+    <select id="category" [(ngModel)]="category" (ngModelChange)="setCategory($event)">
+      <option value="">All categories</option>
+      @for (item of categories; track item) {
+        <option [value]="item">{{ item }}</option>
+      }
+    </select>
+
+    <label class="sr-only" for="sort">Sort products</label>
+    <select id="sort" [(ngModel)]="sort" (ngModelChange)="setSort($event)">
+      <option value="featured">Featured</option>
+      <option value="price-asc">Price: low to high</option>
+      <option value="price-desc">Price: high to low</option>
+      <option value="new">New arrivals</option>
+    </select>
+  </div>
+
+  @if (filtered$ | async; as list) {
+    <div class="count">{{ list.length }} pieces</div>
+    <div class="grid">
+      @for (product of list; track product.id) {
+        <app-product-card [product]="product" />
+      } @empty {
+        <div class="empty">No pieces match your current filters.</div>
+      }
+    </div>
+  }
+</section>

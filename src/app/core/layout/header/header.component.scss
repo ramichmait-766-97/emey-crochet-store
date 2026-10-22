@@ -1,0 +1,116 @@
+:host {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: block;
+  background: color-mix(in srgb, var(--cream) 94%, transparent);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(16px);
+}
+
+.promo {
+  padding: 0.5rem 1rem;
+  color: white;
+  font-size: 0.76rem;
+  letter-spacing: 0.035em;
+  text-align: center;
+  background: var(--ink);
+
+  a {
+    margin-left: 0.35rem;
+    color: var(--blush);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.nav {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  justify-content: space-between;
+  height: 80px;
+}
+
+.brand {
+  display: flex;
+  gap: 0.72rem;
+  align-items: center;
+  color: var(--ink);
+
+  img {
+    width: 44px;
+    height: 44px;
+  }
+
+  b {
+    display: block;
+    font: 600 1.45rem var(--serif);
+  }
+
+  small {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.55rem;
+    letter-spacing: 0.23em;
+  }
+}
+
+nav,
+.actions {
+  display: flex;
+  gap: 1.35rem;
+  align-items: center;
+}
+
+nav a,
+.actions a,
+.link {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.link {
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.active {
+  color: var(--ink) !important;
+}
+
+.cart {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+
+  span {
+    display: grid;
+    place-items: center;
+    min-width: 22px;
+    height: 22px;
+    padding-inline: 0.25rem;
+    color: white;
+    font-size: 0.7rem;
+    background: var(--rose);
+    border-radius: 999px;
+  }
+}
+
+@media (max-width: 720px) {
+  .nav {
+    height: 68px;
+  }
+
+  nav,
+  .actions .link,
+  .brand small {
+    display: none;
+  }
+
+  .promo {
+    font-size: 0.68rem;
+  }
+}

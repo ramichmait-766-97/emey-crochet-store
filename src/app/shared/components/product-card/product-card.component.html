@@ -1,0 +1,26 @@
+@if (product(); as item) {
+  @if (settings.settings$ | async; as site) {
+    <article>
+      <a class="image" [routerLink]="['/product', item.slug]">
+        <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" decoding="async" />
+        @if (item.newArrival) {
+          <span class="badge">New</span>
+        } @else if (item.bestSeller) {
+          <span class="badge">Best seller</span>
+        }
+      </a>
+
+      <div class="meta">
+        <div>
+          <small>{{ item.category }}</small>
+          <a [routerLink]="['/product', item.slug]"><h3>{{ item.name }}</h3></a>
+        </div>
+        <b>{{ item.price | currency: site.currency : 'symbol' : '1.2-2' }}</b>
+      </div>
+
+      <button class="add" type="button" [disabled]="item.quantity < 1" (click)="cart.add(item)">
+        {{ item.quantity ? 'Add to bag' : 'Sold out' }}
+      </button>
+    </article>
+  }
+}

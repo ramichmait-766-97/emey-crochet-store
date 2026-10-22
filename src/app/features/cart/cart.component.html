@@ -1,0 +1,65 @@
+@if (settings.settings$ | async; as site) {
+  <section class="shell cart-page">
+    <div>
+      <span class="eyebrow">YOUR BAG</span>
+      <h1>Your selected pieces</h1>
+
+      @if (cart.lines().length) {
+        <div class="lines">
+          @for (line of cart.lines(); track line.product.id) {
+            <div class="line">
+              <img [src]="line.product.imageUrl" [alt]="line.product.name" />
+              <div class="grow">
+                <b>{{ line.product.name }}</b>
+                <span>{{ line.product.price | currency: site.currency }} each</span>
+                <div class="qty" aria-label="Quantity controls">
+                  <button type="button" (click)="cart.setQuantity(line.product.id, line.quantity - 1)" aria-label="Decrease quantity">−</button>
+                  <span>{{ line.quantity }}</span>
+                  <button type="button" (click)="cart.setQuantity(line.product.id, line.quantity + 1)" aria-label="Increase quantity">+</button>
+                </div>
+              </div>
+              <button class="remove" type="button" (click)="cart.remove(line.product.id)">Remove</button>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="empty">Your bag is waiting for something beautiful.</p>
+      }
+    </div>
+
+    <aside>
+      @if (auth.firebaseUser$ | async) {
+        <div class="discount success-tone">✓ Signed in — your <b>{{ site.memberDiscountPercent }}% member discount</b> is verified at checkout.</div>
+      } @else {
+        <div class="discount">Sign in before checkout to receive <b>{{ site.memberDiscountPercent }}% off</b>.</div>
+      }
+
+      <div class="total">
+        <span>Subtotal</span>
+        <b>{{ cart.subtotal() | currency: site.currency }}</b>
+      </div>
+
+      <h3>Checkout details</h3>
+      <label>Full name<input [(ngModel)]="contact.fullName" autocomplete="name" /></label>
+      <label>Email<input type="email" [(ngModel)]="contact.email" autocomplete="email" /></label>
+      <label>Phone / WhatsApp<input [(ngModel)]="contact.phone" autocomplete="tel" /></label>
+      <label>Delivery address<textarea [(ngModel)]="contact.address" autocomplete="street-address"></textarea></label>
+      <label>Order notes<textarea [(ngModel)]="contact.notes" placeholder="Optional"></textarea></label>
+
+      <button class="btn primary wide" type="button" [disabled]="busy || !cart.lines().length || !contact.fullName.trim() || !contact.phone.trim()" (click)="checkout()">
+        {{ busy ? 'Placing order…' : 'Place order' }}
+      </button>
+
+      @if (error) { <div class="message error">{{ error }}</div> }
+      @if (result) {
+        <div class="message success">
+          Order <b>{{ result.orderId }}</b> created.<br />
+          Total: <b>{{ result.total | currency: result.currency }}</b>
+          @if (whatsappUrl !== '#') {
+            <br /><a [href]="whatsappUrl" target="_blank" rel="noopener noreferrer">Continue on WhatsApp →</a>
+          }
+        </div>
+      }
+    </aside>
+  </section>
+}

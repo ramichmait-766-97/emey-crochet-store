@@ -1,0 +1,18 @@
+<section class="shell account">
+  @if (auth.user$ | async; as user) {
+    <span class="eyebrow">MY EMEY</span>
+    <h1>Hello, {{ user.displayName || 'there' }}.</h1>
+
+    <div class="cards">
+      @if (settings.settings$ | async; as site) {
+        <article class="benefit">
+          <h3>Member benefit</h3>
+          <b>{{ site.memberDiscountPercent }}% off</b>
+          <p>Your member discount is automatically verified on website orders.</p>
+        </article>
+      }
+      <article><h3>Order history</h3><p>Your Firebase-connected orders will appear here once the project is configured.</p></article>
+      <article><h3>Profile</h3><p>{{ user.email }}</p><p>Role: {{ user.role }}</p>@if (user.role === 'admin') { <a routerLink="/admin">Open store management →</a> }</article>
+    </div>
+  }
+</section>

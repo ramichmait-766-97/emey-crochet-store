@@ -1,0 +1,34 @@
+@if (settings.settings$ | async; as site) {
+  <div class="promo">
+    Members receive <strong>{{ site.memberDiscountPercent }}% off</strong> every website order.
+    <a routerLink="/login">Sign in</a>
+  </div>
+}
+
+<header class="nav shell">
+  <a class="brand" routerLink="/" aria-label="Emey Crochet Store home">
+    <img src="assets/branding/emey-mark.svg" alt="" width="44" height="44" />
+    <span>
+      <b>Emey</b>
+      <small>CROCHET STORE</small>
+    </span>
+  </a>
+
+  <nav aria-label="Primary navigation">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+    <a routerLink="/shop" routerLinkActive="active">Shop</a>
+  </nav>
+
+  <div class="actions">
+    @if (auth.firebaseUser$ | async) {
+      <a routerLink="/account">Account</a>
+      <button type="button" class="link" (click)="auth.logout()">Sign out</button>
+    } @else {
+      <a routerLink="/login">Login</a>
+    }
+
+    <a class="cart" routerLink="/cart" aria-label="Shopping bag">
+      Bag <span>{{ cart.count() }}</span>
+    </a>
+  </div>
+</header>

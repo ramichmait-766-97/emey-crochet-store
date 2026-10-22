@@ -1,0 +1,77 @@
+<section class="hero shell">
+  <div class="copy">
+    <span class="eyebrow">HANDMADE · WARM · TIMELESS</span>
+    <h1>Crafted by hand,<br /><em>made to be kept.</em></h1>
+    <p>Thoughtful crochet pieces where cozy craftsmanship meets a refined boutique aesthetic.</p>
+
+    <div class="buttons">
+      <a class="btn primary" routerLink="/shop">Explore the collection</a>
+      <a class="btn ghost" href="#story">Our story</a>
+    </div>
+
+    @if (settings.settings$ | async; as site) {
+      <div class="member">
+        <b>{{ site.memberDiscountPercent }}% member benefit</b>
+        <span>Sign in before checkout and your discount is applied automatically.</span>
+      </div>
+    }
+  </div>
+
+  <div class="visual">
+    <img src="assets/products/sunflower-bag.webp" alt="Sunflower crochet bag" fetchpriority="high" />
+    <div class="float">Made slowly<br /><b>with heart.</b></div>
+  </div>
+</section>
+
+<section class="categories shell">
+  <div class="section-head">
+    <div>
+      <span class="eyebrow">CURATED FOR EVERY MOMENT</span>
+      <h2>Shop by collection</h2>
+    </div>
+    <a routerLink="/shop">View all →</a>
+  </div>
+
+  <div class="cat-grid">
+    <a routerLink="/shop" [queryParams]="{ category: 'Apparel' }">
+      <img src="assets/products/yellow-child-dress.webp" alt="Crochet apparel" loading="lazy" />
+      <span>Apparel</span>
+    </a>
+    <a routerLink="/shop" [queryParams]="{ category: 'Bags & Accessories' }">
+      <img src="assets/products/royal-blue-frame-bag.webp" alt="Crochet bags and accessories" loading="lazy" />
+      <span>Bags & Accessories</span>
+    </a>
+    <a routerLink="/shop" [queryParams]="{ category: 'Home Decor' }">
+      <img src="assets/products/geometric-blanket.webp" alt="Crochet home decor" loading="lazy" />
+      <span>Home Decor</span>
+    </a>
+  </div>
+</section>
+
+<section class="featured shell">
+  <div class="section-head">
+    <div>
+      <span class="eyebrow">FRESH FROM THE HOOK</span>
+      <h2>Pieces we love</h2>
+    </div>
+  </div>
+
+  <div class="product-grid">
+    @for (product of products.featured() | async; track product.id) {
+      <app-product-card [product]="product" />
+    }
+  </div>
+</section>
+
+<section id="story" class="story">
+  <div class="shell story-grid">
+    <div>
+      <span class="eyebrow">THE EMEY FEELING</span>
+      <h2>Small details.<br />Big warmth.</h2>
+    </div>
+    <div>
+      <p>Every piece begins with yarn, patience and a point of view. Emey is built around the charm of handmade work without giving up the polish of a modern boutique.</p>
+      <p class="quote">“Beautiful enough to gift. Personal enough to keep.”</p>
+    </div>
+  </div>
+</section>
