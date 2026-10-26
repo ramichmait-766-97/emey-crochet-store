@@ -288,6 +288,11 @@ async function seed() {
     // Read and match the entire catalog before any writes. The transaction also
     // prevents concurrent seed runs from inserting duplicates under different IDs.
     const catalog = await transaction.get(db.collection('products'));
+    if (catalog.docs.some((doc) => doc.data().imageFileId)) {
+      throw new Error(
+        'This catalog uses hosted images. The legacy byte-image seed is disabled; use /admin for catalog updates.',
+      );
+    }
     const settingsRef = db.doc('siteSettings/public');
     const settings = await transaction.get(settingsRef);
     const documents = catalog.docs.map((doc) => ({ id: doc.id, data: doc.data(), ref: doc.ref }));

@@ -11,6 +11,7 @@ export interface Product {
   price: number;
   quantity: number;
   imageUrl: string;
+  imageFileId?: string;
   imageContentType?: string;
   imageData?: unknown;
   gallery: string[];

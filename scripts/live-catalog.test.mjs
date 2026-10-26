@@ -59,6 +59,7 @@ function catalogHarness() {
       if (name === 'rxjs') return rxjs;
       if (name.endsWith('/firestore-streams')) return load('core/utils/firestore-streams.ts');
       if (name === './firebase.service') return { FirebaseService: class {} };
+      if (name === './image-upload.service') return { ImageUploadService: class {} };
       if (name.endsWith('/product-image'))
         return { productImageSrc: (row) => `database:${row.id}` };
       if (name.endsWith('/store.constants')) return { PRODUCT_CATEGORIES: ['Apparel'] };

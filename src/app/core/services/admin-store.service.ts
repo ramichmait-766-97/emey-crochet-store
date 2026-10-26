@@ -1,12 +1,13 @@
 import { collectionData } from '../utils/firestore-streams';
 import { FirebaseService } from './firebase.service';
 import { Injectable, inject, signal } from '@angular/core';
-import { Bytes, collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, deleteField, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Observable, catchError, map, of, shareReplay } from 'rxjs';
 import { PRODUCT_CATEGORIES } from '../constants/store.constants';
 import { Product } from '../models/product.model';
 import { SiteSettings } from '../models/site-settings.model';
-import { MAX_PRODUCT_IMAGE_BYTES, productImageSrc } from '../utils/product-image';
+import { productImageSrc } from '../utils/product-image';
+import { ImageUploadService } from './image-upload.service';
 
 export type ProductDraft = Omit<Product, 'createdAt' | 'modifiedAt'> & {
   createdAt?: unknown;
@@ -16,6 +17,7 @@ export type ProductDraft = Omit<Product, 'createdAt' | 'modifiedAt'> & {
 @Injectable({ providedIn: 'root' })
 export class AdminStoreService {
   private readonly firestore = inject(FirebaseService).firestore;
+  private readonly imageUpload = inject(ImageUploadService);
   readonly loadError = signal('');
 
   readonly products$ = this.createProductStream();
@@ -39,7 +41,7 @@ export class AdminStoreService {
 
     const id = this.normalizeId(draft.id);
     const productRef = doc(this.firestore, `products/${id}`);
-    const imagePayload = file ? await this.imageBytesFromFile(file) : null;
+    const imagePayload = file ? await this.imageUpload.upload(file, id) : null;
 
     if (!file && !draft.imageData && !draft.imageUrl) {
       throw new Error('Please choose a product image.');
@@ -62,7 +64,12 @@ export class AdminStoreService {
         active: !!draft.active,
         createdAt: draft.createdAt ?? serverTimestamp(),
         modifiedAt: serverTimestamp(),
-        ...(imagePayload ?? {}),
+        ...(imagePayload
+          ? {
+              ...imagePayload,
+              imageData: deleteField(),
+            }
+          : {}),
       },
       { merge: true },
     );
@@ -113,26 +120,6 @@ export class AdminStoreService {
         return of([] as Product[]);
       }),
     );
-  }
-
-  private async imageBytesFromFile(file: File): Promise<{
-    imageData: Bytes;
-    imageContentType: string;
-  }> {
-    if (!file.type.startsWith('image/')) {
-      throw new Error('Please choose a valid image file.');
-    }
-    if (file.size > MAX_PRODUCT_IMAGE_BYTES) {
-      throw new Error(
-        'Product images must be smaller than 700 KB so they fit in a Firestore document.',
-      );
-    }
-
-    const buffer = await file.arrayBuffer();
-    return {
-      imageData: Bytes.fromUint8Array(new Uint8Array(buffer)),
-      imageContentType: file.type,
-    };
   }
 
   private normalizeId(value: string): string {

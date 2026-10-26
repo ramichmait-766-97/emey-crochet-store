@@ -1,131 +1,92 @@
 # Emey Crochet Store
 
-An Angular 20 storefront for handmade crochet, using Firebase Authentication and
-Firestore database `maindb` in project `emey-crochet-store`.
+Angular 20 storefront with Firebase Authentication, Firestore realtime catalogs,
+ImageKit product photos, and a Cloudflare Worker for secure admin uploads.
 
-## Development
+## Development and checks
 
-Use Node 22.12+ or Node 24 and a local disk for dependencies:
+Use Node 22.12+ or Node 24. Install dependencies on a local disk, not a VMware
+shared folder with host-linked node_modules.
 
 ```powershell
 npm ci
 npm start
-```
-
-The application uses the modular Firebase SDK (`firebase@12.19.0`) through one
-`FirebaseService`. AngularFire is intentionally removed: mixing its Firebase 11
-references with Firebase 12 caused empty public and admin catalogs.
-Public project configuration lives in `src/environments/environment.ts`.
-Never put private credentials or passwords in application source.
-
-## Deploy from the VMware shared folder
-
-```powershell
-npm run firebase
-```
-
-The Windows script resolves its source even when npm's CMD process falls back from
-a UNC path. It mirrors source into `%LOCALAPPDATA%\EmeyCrochet\deploy\project`,
-installs dependencies when package files or Node major change, builds production,
-and deploys Hosting and Firestore rules. The current VM user's Firebase CLI login
-is used. Do not edit the managed local copy; edit the shared source instead.
-
-```powershell
-npm run firebase -- -BuildOnly
-```
-
-The normal command excludes Functions and does not change your billing plan.
-`npm run firebase:deploy` is the legacy full deployment command; it includes
-Functions and requires Blaze. Prefer `npm run firebase` for this store.
-
-## Shopping and ordering
-
-- Storefront and admin catalogs use Firestore realtime listeners only. There is
-  no bundled demo catalog or static product fallback. Public pages query
-  `products` with `active == true` in `emey-crochet-store / maindb`; admin sees
-  hidden products too. Seeding does not require redeploying the storefront.
-- Newly seeded P015-P019 start hidden. In `/admin`, enter their actual prices
-  and stock, enable Active, and save to make them appear publicly.
-- Home collection links open URL-driven shop filters; category, search and sorting
-  survive refresh and browser history. New arrivals and bestseller shortcuts filter
-  the matching products.
-- Products use image bytes stored in Firestore. Admin uploads accept images up to
-  700 KiB; the browser generates display data URLs. Storage is not needed.
-- The bag persists slim product data without binary/base64 images. Prices and stock
-  refresh from the catalog. Added items have accessible confirmation feedback.
-- Checkout prepares a WhatsApp request after checking current Firestore prices and
-  stock. Member discount is shown as an estimate. Customers explicitly send the
-  message; the store confirms availability, delivery and payment manually.
-- Preparing a request does not create a confirmed order, collect payment, decrement
-  stock, or clear the bag. Editing request details invalidates the prepared link.
-- WhatsApp contact: `+96176080766`, configured in Store settings. Invalid/missing
-  contacts block request preparation with a useful message.
-
-## Accounts and admin
-
-Admins are authorized by Firebase Auth custom claim `admin: true` and go to
-`/admin`. Clients go to `/account`. Header navigation exposes the correct actions,
-including mobile navigation and sign out. Safe shopping return URLs are preserved.
-
-Account profiles save name, phone, billing address/company/tax details and
-notification preferences in `users/{uid}`. Password reset and email verification
-use Firebase Auth. No card details are stored. Notification preferences are saved;
-automated notification delivery is not connected.
-
-Admin manages products, stock, prices, image bytes and store/contact settings.
-Firestore rules protect profile ownership and prevent customer role escalation.
-The database must support the Firestore Native API and realtime listeners.
-
-## Seeds
-
-Install trusted script dependencies with `npm --prefix functions ci`. Use local
-VM copies when the shared folder cannot resolve node_modules links. Scripts accept
-a service account via GOOGLE_APPLICATION_CREDENTIALS, ADC, or the existing Firebase
-CLI login. Do not commit credential files.
-
-```powershell
-npm run products:seed
-npm run users:seed
-```
-
-For a local-disk seed run from the shared project folder, use `npm run productseed`.
-It copies the seed scripts into `C:\firebase-seed\functions\scripts`, the Functions
-dependency manifests into `C:\firebase-seed\functions`, and product WebP images into
-`C:\firebase-seed\src\assets\products`, installs local dependencies when needed,
-then seeds from that copy. It leaves unrelated destination files and credentials
-in place. Repeated runs refresh the copied source files and reuse installed dependencies.
-Use `npm run productseed -- --dry-run` to validate the local copy without database writes.
-
-If Firebase credentials are missing, run `npm run firebase:login` once, complete
-the browser sign-in with an account authorized for this project, then retry.
-
-Product seed includes 19 entries and verifies every image by read-back, preserving
-existing prices, stock, publication status and settings. It matches by fixed ID,
-normalized slug or name; ambiguous matches or conflicting IDs abort before writes.
-Repeated runs refresh changed images without creating additional products. Existing
-duplicates must be resolved manually; the script does not delete products.
-All 19 product images use the enhanced boutique backgrounds. P015–P019 are created as inactive drafts
-with zero price and stock; set actual prices/stock in `/admin` before activation.
-P016 is a nine-design tops collection preview, not nine separately purchasable items.
-Images are committed as WebP assets under 700 KiB; the original PNG outputs are
-not needed to run the seed. The launcher uses supported Node on PATH, or the
-installed Codex Node runtime when the system Node is too old.
-Use `npm run products:seed -- --dry-run` for local image/manifest validation without
-connecting to Firestore. User seed targets the configured admin/client emails;
-set SEED_ADMIN_PASSWORD and SEED_CLIENT_PASSWORD in the process environment first.
-It creates or updates accounts, resets their passwords to the supplied values,
-and verifies role claims. Passwords are never written to Firestore or source.
-
-## Validation
-
-```powershell
 npm test
 npm run typecheck
 npm run build:prod
 ```
 
-See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the code map, schema, verification
-status and remaining boundaries. Local original photos, full-size generated PNGs
-and image-generation prompts are retained under `output/product-photos/`, which
-is ignored by Git and excluded from the deployment copy. Commit the optimized
-`src/assets/products/*.webp` files to share or deploy the enhanced images.
+Worker checks:
+
+```powershell
+cd workers/image-upload
+npm ci
+npm test
+```
+
+## Deploy from the VMware shared folder
+
+```powershell
+npm run firebase:login
+npm run firebase
+```
+
+The launcher handles UNC paths, mirrors source to
+`%LOCALAPPDATA%\EmeyCrochet\deploy\project`, reuses local dependencies, runs tests,
+builds, and deploys only Hosting and Firestore rules. Hosting uploads default to
+two concurrent files; `FIREBASE_HOSTING_UPLOAD_CONCURRENCY` overrides that value.
+Credentials are specific to the Windows user and machine. Edit the shared source,
+not the generated deployment copy. `npm run firebase -- -BuildOnly` skips deployment.
+Avoid the legacy `firebase:deploy` command: it also deploys Functions and requires Blaze.
+
+## Store behavior
+
+- Firebase project: `emey-crochet-store`; Firestore database: `maindb`.
+- Catalogs come from Firestore realtime listeners. Public pages show active
+  products; admin sees hidden products as well. There is no demo catalog fallback.
+- Admin access requires the Firebase Auth custom claim `admin: true`.
+- Product photos are hosted on ImageKit. Admin accepts WebP/JPEG/PNG up to 5 MiB;
+  the Worker verifies the Firebase admin token and uploads using its secret key.
+  Firestore stores `imageUrl`, `imageFileId`, and `imageContentType`.
+- Existing photo migration was reported complete by the owner on 2026-10-26.
+  Legacy byte rendering remains for recovery. Do not run the old product seed
+  against the migrated catalog; it refuses writes once hosted images are present.
+- Local product WebP files remain necessary for homepage artwork and recovery.
+- The cart keeps slim local data and reconciles current prices/stock. Checkout
+  prepares a WhatsApp request; the customer sends it and the store manually confirms
+  availability, delivery, and payment. No payment collection, stock reservation,
+  automated notification delivery, or confirmed order is created by this flow.
+- Profiles and notification preferences are stored in `users/{uid}`. Role claims,
+  profile ownership, and customer write restrictions are enforced by Firestore rules.
+
+## Image hosting and recovery
+
+- ImageKit endpoint: `https://ik.imagekit.io/s5yr4ioi1`
+- Upload Worker: `https://emey-image-upload.rami-chmait97.workers.dev`
+- Worker source/configuration: `workers/image-upload/`.
+- Worker text variables: `FIREBASE_PROJECT_ID`, `IMAGEKIT_URL_ENDPOINT`,
+  `ALLOWED_ORIGINS`; secret: `IMAGEKIT_PRIVATE_KEY`. Never commit private keys.
+- Keep all services on their free plans. Usage allowances still apply.
+
+Migration tooling is retained for recovery and skips products without image bytes:
+
+```powershell
+# Preview only; requires authorized Firebase CLI login on the VM.
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\migrate-images.ps1
+# Apply only when intentionally migrating remaining byte images; prompts for key.
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\migrate-images.ps1 -Apply
+```
+
+The runner uses `C:\firebase-seed` for local script dependencies. Migration verifies
+the publicly served original with SHA-256 before replacing bytes and uses an update
+precondition to avoid overwriting concurrent edits. Private keys stay out of chat,
+source, and shell command history. Admin/user seed scripts and legacy checkout
+Functions are recovery tools, not part of normal deployment; user seeding resets
+passwords and must only be run deliberately.
+
+## Project guide
+
+The maintained code map, history, verification record, and next steps live outside
+the repository at `../emey-crochet-store-notes/PROJECT_MEMORY.md`. AGENTS.md instructs
+future tasks to read and update it. That sibling folder is not included in a Git
+push; copy it separately when moving to a different computer.

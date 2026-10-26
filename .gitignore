@@ -12,3 +12,6 @@ serviceAccount*.json
 *.log
 .artifacts/
 output/
+.wrangler/
+.dev.vars
+.dev.vars.*

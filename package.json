@@ -23,7 +23,7 @@
     "admin:set": "node functions/scripts/set-admin.mjs",
     "products:seed": "node scripts/run-products-seed.cjs",
     "productseed": "node -e \"require(require('path').join((process.env.npm_package_json ? require('path').dirname(process.env.npm_package_json) : process.env.INIT_CWD), 'scripts/run-products-seed.cjs'))\" -- productseed --local-copy",
-    "firebase:login": "node scripts/run-products-seed.cjs --login",
+    "firebase:login": "node -e \"require(require('path').join((process.env.npm_package_json ? require('path').dirname(process.env.npm_package_json) : process.env.INIT_CWD), 'scripts/run-products-seed.cjs'))\" -- firebase-login --login",
     "users:seed": "node functions/scripts/seed-users.mjs",
     "firebase:deploy:free": "npm run build:prod && firebase deploy --project emey-crochet-store --only hosting,firestore:rules"
   },

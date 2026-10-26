@@ -56,7 +56,7 @@
         @for (product of admin.products$ | async; track product.id) {
           <button class="row" type="button" (click)="edit(product)">
             <span class="prod">
-              <img [src]="product.imageUrl" [alt]="product.name" />
+              <img [src]="product.imageUrl" [alt]="product.name" loading="lazy" decoding="async" />
               <b>{{ product.name }}</b>
             </span>
             <span>{{ product.price | currency: settingsDraft?.currency || 'USD' }}</span>
@@ -131,8 +131,12 @@
             </label>
           </div>
           <label>
-            Product image (WebP, JPG or PNG, up to 700 KB)
-            <input type="file" accept="image/*" (change)="pickFile($event)" />
+            Product image (WebP, JPG or PNG, up to 5 MB)
+            <input
+              type="file"
+              accept="image/webp,image/jpeg,image/png"
+              (change)="pickFile($event)"
+            />
           </label>
           <button
             class="btn primary wide"

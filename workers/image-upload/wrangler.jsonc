@@ -1,0 +1,11 @@
+{
+  "name": "emey-image-upload",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-23",
+  "workers_dev": true,
+  "vars": {
+    "FIREBASE_PROJECT_ID": "emey-crochet-store",
+    "IMAGEKIT_URL_ENDPOINT": "https://ik.imagekit.io/s5yr4ioi1",
+    "ALLOWED_ORIGINS": "https://emey-crochet-store.web.app,https://emey-crochet-store.firebaseapp.com",
+  },
+}

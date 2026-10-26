@@ -20,6 +20,21 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const { filterCatalog, parseCatalogFilters } = load(resolve(root, 'src/app/core/utils/catalog.ts'));
 const { TEST_PRODUCTS } = load(resolve(root, 'scripts/fixtures/catalog-products.ts'));
 const { prepareOrderRequest } = load(resolve(root, 'src/app/core/utils/order-request.ts'));
+const { imageDeliveryUrl, productImageSrc } = load(
+  resolve(root, 'src/app/core/utils/product-image.ts'),
+);
+
+test('hosted photos use smaller delivery URLs while legacy byte images remain readable', () => {
+  const source = 'https://ik.imagekit.io/s5yr4ioi1/emey/products/photo.webp';
+  assert.equal(new URL(imageDeliveryUrl(source, 600)).searchParams.get('tr'), 'w-600,q-80,f-auto');
+  assert.equal(new URL(imageDeliveryUrl(source)).searchParams.get('tr'), 'w-1200,q-80,f-auto');
+  assert.equal(imageDeliveryUrl('assets/products/photo.webp'), 'assets/products/photo.webp');
+  assert.equal(productImageSrc({ imageUrl: source }), source);
+  assert.equal(
+    productImageSrc({ imageData: new Uint8Array([1, 2, 3]), imageContentType: 'image/webp' }),
+    'data:image/webp;base64,AQID',
+  );
+});
 const parse = (params) => parseCatalogFilters(new URLSearchParams(params));
 test('all home collection links return the matching fixture products', () => {
   for (const [category, count] of [

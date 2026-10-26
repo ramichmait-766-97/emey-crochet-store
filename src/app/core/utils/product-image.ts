@@ -1,4 +1,9 @@
-export const MAX_PRODUCT_IMAGE_BYTES = 700 * 1024;
+export function imageDeliveryUrl(source: string, width = 1200): string {
+  if (!source.startsWith('https://ik.imagekit.io/')) return source;
+  const url = new URL(source);
+  url.searchParams.set('tr', `w-${width},q-80,f-auto`);
+  return url.toString();
+}
 
 export function toUint8Array(value: unknown): Uint8Array | null {
   if (!value) {

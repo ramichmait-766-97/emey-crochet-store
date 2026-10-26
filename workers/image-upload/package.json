@@ -1,0 +1,13 @@
+{
+  "name": "emey-image-upload",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx wrangler@4.152.0 dev",
+    "deploy": "npx wrangler@4.152.0 deploy",
+    "test": "node --test worker.test.mjs"
+  },
+  "dependencies": {
+    "jose": "6.2.13"
+  }
+}

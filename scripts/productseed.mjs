@@ -14,6 +14,8 @@ import { spawnSync } from 'node:child_process';
 const source = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const destination = 'C:\\firebase-seed';
 const args = process.argv.slice(2);
+const migrateImages = args.includes('--migrate-images');
+const scriptName = migrateImages ? 'migrate-images.mjs' : 'seed-products.mjs';
 
 function run(node, script, commandArgs, cwd) {
   const result = spawnSync(node, [script, ...commandArgs], {
@@ -45,6 +47,7 @@ try {
     'functions/scripts/seed-products.mjs',
     'functions/scripts/seed-product-matching.mjs',
     'functions/scripts/init-admin-app.mjs',
+    'functions/scripts/migrate-images.mjs',
   ])
     copy(relative);
   for (const file of readdirSync(join(source, 'src/assets/products'))) {
@@ -124,8 +127,13 @@ try {
     );
     writeFileSync(stamp, signature);
   }
-  console.log('Launching product seed from C:\\firebase-seed\\functions\\scripts...');
-  run(process.execPath, join(functionsDir, 'scripts/seed-products.mjs'), args, destination);
+  console.log(`Launching ${scriptName} from the local VM copy...`);
+  run(
+    process.execPath,
+    join(functionsDir, 'scripts', scriptName),
+    args.filter((arg) => arg !== '--migrate-images'),
+    destination,
+  );
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

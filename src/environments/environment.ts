@@ -1,6 +1,10 @@
 export const environment = {
   production: true,
   firestoreDatabase: 'maindb',
+  images: {
+    urlEndpoint: 'https://ik.imagekit.io/s5yr4ioi1',
+    uploadWorkerUrl: 'https://emey-image-upload.rami-chmait97.workers.dev',
+  },
   firebase: {
     apiKey: 'AIzaSyAlSg_gD4KZzgQ2S_zX2e5FjnYjW-zGNdY',
     authDomain: 'emey-crochet-store.firebaseapp.com',

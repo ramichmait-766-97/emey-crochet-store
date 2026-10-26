@@ -62,7 +62,16 @@ try {
         Invoke-Checked $node @($angularCli, 'build', '--configuration', 'production')
         if (!$BuildOnly) {
             Write-Host 'Deploying Hosting and Firestore rules to emey-crochet-store...'
-            Invoke-Checked $node @($firebaseCli, 'deploy', '--project', 'emey-crochet-store', '--only', 'hosting,firestore:rules')
+            $previousUploadConcurrency = $env:FIREBASE_HOSTING_UPLOAD_CONCURRENCY
+            try {
+                if ([string]::IsNullOrWhiteSpace($previousUploadConcurrency)) {
+                    $env:FIREBASE_HOSTING_UPLOAD_CONCURRENCY = '2'
+                }
+                Write-Host "Hosting upload concurrency: $env:FIREBASE_HOSTING_UPLOAD_CONCURRENCY"
+                Invoke-Checked $node @($firebaseCli, 'deploy', '--project', 'emey-crochet-store', '--only', 'hosting,firestore:rules')
+            } finally {
+                $env:FIREBASE_HOSTING_UPLOAD_CONCURRENCY = $previousUploadConcurrency
+            }
         }
     } finally {
         Pop-Location
