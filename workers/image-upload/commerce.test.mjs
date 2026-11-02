@@ -328,10 +328,11 @@ const httpRequest = (path, input, token) =>
     method: 'POST',
     headers: {
       Origin: origin,
+      ...(input?.challenge ? { 'X-Turnstile-Token': input.challenge } : {}),
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify(input),
+    body: JSON.stringify(input, (key, value) => (key === 'challenge' ? undefined : value)),
   });
 test('guest status capability isolates orders and omits contact/private hashes', async () => {
   const db = memory();
@@ -375,7 +376,7 @@ test('API denies admin impersonation, expired auth, missing anti-bot, excess bod
   });
   assert.equal((await handler(httpRequest('/admin/orders', { admin: true }), env)).status, 403);
   assert.equal((await handler(httpRequest('/my-orders', {}, 'invalid'), env)).status, 401);
-  assert.equal((await handler(httpRequest('/checkout', request()), env)).status, 403);
+  assert.equal((await handler(httpRequest('/checkout', request()), env)).status, 401);
   assert.equal(
     (await handler(httpRequest('/quote', { text: 'a'.repeat(25000) }), env)).status,
     413,
@@ -421,8 +422,16 @@ test('API verifies server identity for discount and verifies challenge host/acti
       Response.json({ success: true, hostname: 'attacker.test', action: 'checkout' }),
   });
   assert.equal(
-    (await wrongHost(httpRequest('/checkout', { ...request('b'), challenge: 'test-only' }), env))
-      .status,
+    (
+      await wrongHost(
+        httpRequest('/checkout', {
+          ...request('b'),
+          quoteFingerprint: 'a'.repeat(64),
+          challenge: 'test-only',
+        }),
+        env,
+      )
+    ).status,
     403,
   );
 });
@@ -593,4 +602,108 @@ test('member history cannot select another account and delivered orders consume 
     'admin',
   );
   assert.equal(db.data.get('products/P001').reservedUnits, 0);
+});
+
+test('edge guardian rejects hostile origins, missing headers and malformed intents before database access', async () => {
+  let databaseCalls = 0;
+  let verificationCalls = 0;
+  const handler = createCommerceHandler({
+    database: () => {
+      databaseCalls++;
+      throw new Error('private credential');
+    },
+    remote: async () => {
+      verificationCalls++;
+      return Response.json({ success: true, hostname: 'store.test', action: 'checkout' });
+    },
+  });
+  const hostile = new Request(origin + '/checkout', {
+    method: 'POST',
+    headers: { Origin: 'https://attacker.test' },
+    body: '{}',
+  });
+  assert.equal((await handler(hostile, env)).status, 403);
+  assert.equal(
+    (await handler(httpRequest('/checkout', { challenge: 'body-only' }), env)).status,
+    400,
+  );
+  assert.equal((await handler(httpRequest('/checkout', request()), env)).status, 401);
+  for (const payload of [
+    null,
+    [],
+    'text',
+    { ...request(), lines: [null] },
+    { ...request(), contact: [] },
+    { ...request(), lines: [{ productId: ['P001'], quantity: 1 }] },
+  ]) {
+    assert.equal((await handler(httpRequest('/quote', payload), env)).status, 400);
+  }
+  assert.equal(databaseCalls, 0);
+  assert.equal(verificationCalls, 0);
+  const preflight = await handler(
+    new Request(origin, { method: 'OPTIONS', headers: { Origin: origin } }),
+    env,
+  );
+  assert.equal(preflight.status, 204);
+  assert.match(preflight.headers.get('Access-Control-Allow-Headers'), /X-Turnstile-Token/);
+  assert.match(preflight.headers.get('Content-Security-Policy'), /default-src 'none'/);
+  const noToken = new Request(origin + '/checkout', {
+    method: 'POST',
+    headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...request(), challenge: 'body-only' }),
+  });
+  assert.equal((await handler(noToken, env)).status, 401);
+});
+
+test('Turnstile fails closed for upstream failures, nonboolean success, wrong action and oversized tokens', async () => {
+  let databaseCalls = 0;
+  const payload = { ...request(), quoteFingerprint: 'a'.repeat(64), challenge: 'test-token' };
+  for (const outcome of [
+    null,
+    [],
+    { success: 'true', hostname: 'store.test', action: 'checkout' },
+    { success: true, hostname: 'store.test', action: 'other' },
+    { success: false, 'error-codes': ['timeout-or-duplicate'] },
+  ]) {
+    const handler = createCommerceHandler({
+      database: () => {
+        databaseCalls++;
+      },
+      remote: async (url, options) => {
+        assert.equal(url, 'https://challenges.cloudflare.com/turnstile/v0/siteverify');
+        assert.equal(options.body.get('response'), 'test-token');
+        return Response.json(outcome);
+      },
+    });
+    assert.equal((await handler(httpRequest('/checkout', payload), env)).status, 403);
+  }
+  for (const remote of [
+    async () => new Response('private upstream', { status: 500 }),
+    async () => {
+      throw new Error('private secret');
+    },
+    async () => new Response('invalid json'),
+  ]) {
+    const handler = createCommerceHandler({
+      database: () => {
+        databaseCalls++;
+      },
+      remote,
+    });
+    const response = await handler(httpRequest('/checkout', payload), env);
+    assert.equal(response.status, 503);
+    assert.doesNotMatch(await response.text(), /private|secret|SyntaxError/);
+    assert.match(response.headers.get('Cache-Control'), /no-store/);
+  }
+  const handler = createCommerceHandler({
+    database: () => {
+      databaseCalls++;
+    },
+  });
+  assert.equal(
+    (await handler(httpRequest('/checkout', { ...payload, challenge: 'x'.repeat(2049) }), env))
+      .status,
+    403,
+  );
+  assert.equal(databaseCalls, 0);
 });

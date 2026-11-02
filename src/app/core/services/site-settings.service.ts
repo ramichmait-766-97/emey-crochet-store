@@ -5,6 +5,7 @@ import { doc } from 'firebase/firestore';
 import { Observable, catchError, map, of, shareReplay } from 'rxjs';
 import { DEFAULT_SITE_SETTINGS } from '../constants/store.constants';
 import { ContactMethod, SiteSettings } from '../models/site-settings.model';
+import { decodeSiteSettings } from '../../types/commerce.contracts';
 
 @Injectable({ providedIn: 'root' })
 export class SiteSettingsService {
@@ -24,7 +25,7 @@ export class SiteSettingsService {
   }
 
   private createSettingsStream(): Observable<SiteSettings> {
-    return (docData(doc(this.firestore, 'siteSettings/public')) as Observable<SiteSettings>).pipe(
+    return docData(doc(this.firestore, 'siteSettings/public'), decodeSiteSettings).pipe(
       map((settings) => {
         this.loadError.set(false);
         return { ...DEFAULT_SITE_SETTINGS, ...settings, contacts: settings?.contacts ?? [] };

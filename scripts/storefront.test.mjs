@@ -17,7 +17,9 @@ function load(file) {
   return module.exports;
 }
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const { filterCatalog, parseCatalogFilters } = load(resolve(root, 'src/app/core/utils/catalog.ts'));
+const { filterCatalog, parseCatalogFilters, catalogQueryFilters } = load(
+  resolve(root, 'src/app/core/utils/catalog.ts'),
+);
 const { TEST_PRODUCTS } = load(resolve(root, 'scripts/fixtures/catalog-products.ts'));
 const { prepareOrderRequest } = load(resolve(root, 'src/app/core/utils/order-request.ts'));
 const { imageDeliveryUrl, productImageSrc } = load(
@@ -36,6 +38,19 @@ test('hosted photos use smaller delivery URLs while legacy byte images remain re
   );
 });
 const parse = (params) => parseCatalogFilters(new URLSearchParams(params));
+test('URL filters map to server predicates and prefix search enforces name order', () => {
+  const query = catalogQueryFilters(parse('category=apparel&sort=price-desc'));
+  assert.equal(query.category, 'Apparel');
+  assert.equal(query.sortField, 'basePriceInCents');
+  assert.equal(query.sortDirection, 'desc');
+  assert.equal(query.limit, 12);
+  const search = catalogQueryFilters(parse('q=Piece&sort=price-desc&collection=bestsellers'));
+  assert.equal(search.sortField, 'title');
+  assert.equal(search.sortDirection, 'asc');
+  assert.equal(search.collection, 'bestsellers');
+  assert.equal(search.searchToken, 'Piece');
+  assert.equal(catalogQueryFilters(parse('sort=new')).collection, 'new');
+});
 test('all home collection links return the matching fixture products', () => {
   for (const [category, count] of [
     ['Apparel', 7],

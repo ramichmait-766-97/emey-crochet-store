@@ -1,7 +1,10 @@
 @if (viewModel$ | async; as vm) {
   @if (vm.loading) {
     <section class="shell detail">
-      <div class="skeleton" role="status" aria-label="Loading product"></div>
+      <div class="detail-photo skeleton-shimmer" role="status" aria-label="Loading product"></div>
+      <div class="info" aria-hidden="true">
+        <div class="detail-copy-skeleton skeleton-shimmer"></div>
+      </div>
     </section>
   } @else if (vm.error) {
     <section class="shell detail">
@@ -14,25 +17,51 @@
   } @else if (vm.product; as product) {
     <section class="shell detail">
       <div class="image">
+        @let source = selectedImage || optionImage(product) || (product | productImage);
         <img
-          [src]="selectedImage || optionImage(product) || (product | productImage)"
+          class="detail-photo"
+          [src]="source | imagekit: { width: 800 }"
+          [attr.srcset]="source | imagekitSrcset: [320, 640, 960, 1280, 1600]"
+          sizes="(max-width: 560px) calc(100vw - 24px), (max-width: 820px) calc(100vw - 40px), (max-width: 1280px) calc(49.35vw - 21px), calc(651px - 3.15vw)"
+          width="800"
+          height="1000"
+          fetchpriority="high"
+          decoding="async"
+          [appImageFallback]="source"
           [alt]="product.name"
         />
         @if (product.gallery.length) {
-          <div class="gallery" aria-label="Product photos">
-            <button type="button" (click)="selectedImage = ''" [attr.aria-pressed]="!selectedImage">
-              Main photo
-            </button>
-            @for (photo of product.gallery; track photo) {
-              <button
-                type="button"
-                (click)="selectedImage = photo"
-                [attr.aria-pressed]="selectedImage === photo"
-              >
-                <img [src]="photo" [alt]="product.name + ' additional view'" loading="lazy" />
+          @defer (on viewport) {
+            <app-product-gallery
+              [photos]="product.gallery"
+              [productName]="product.name"
+              [selected]="selectedImage"
+              (selectedImage)="selectedImage = $event"
+            />
+          } @placeholder {
+            <div class="product-gallery" aria-hidden="true">
+              <span class="gallery-tile skeleton-shimmer"></span>
+              @for (photo of product.gallery; track photo) {
+                <span class="gallery-tile skeleton-shimmer"></span>
+              }
+            </div>
+          } @loading {
+            <div class="product-gallery" aria-hidden="true">
+              <span class="gallery-tile skeleton-shimmer"></span>
+              @for (photo of product.gallery; track photo) {
+                <span class="gallery-tile skeleton-shimmer"></span>
+              }
+            </div>
+          } @error {
+            <div class="product-gallery" role="alert">
+              <button type="button" class="gallery-tile" (click)="reloadGallery()">
+                Reload photos
               </button>
-            }
-          </div>
+              @for (photo of product.gallery; track photo) {
+                <span class="gallery-tile skeleton-shimmer" aria-hidden="true"></span>
+              }
+            </div>
+          }
         }
       </div>
 

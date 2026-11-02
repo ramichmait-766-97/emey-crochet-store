@@ -3,6 +3,7 @@ import { doc, getDocFromServer } from 'firebase/firestore';
 import { FirebaseService } from './firebase.service';
 import { CheckoutSettings } from '../models/commerce.model';
 import { environment } from '../../../environments/environment';
+import { decodeCheckoutSettings, record } from '../../types/commerce.contracts';
 
 @Injectable({ providedIn: 'root' })
 export class CommerceService {
@@ -12,9 +13,14 @@ export class CommerceService {
     const snapshot = await getDocFromServer(
       doc(this.firebase.firestore, 'store_settings/checkout'),
     );
-    return snapshot.exists() ? (snapshot.data() as CheckoutSettings) : null;
+    return snapshot.exists() ? decodeCheckoutSettings(snapshot.data()) : null;
   }
-  async call<T>(path: string, data: unknown): Promise<T> {
+  async call<T>(
+    path: string,
+    data: unknown,
+    decode: (payload: unknown) => T,
+    challenge?: string,
+  ): Promise<T> {
     if (!this.configured)
       throw new Error('Online order reservations are not available yet. Please contact the store.');
     await this.firebase.auth.authStateReady();
@@ -24,6 +30,7 @@ export class CommerceService {
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(path === '/checkout' && challenge ? { 'X-Turnstile-Token': challenge } : {}),
       },
       body: JSON.stringify(data),
       signal: AbortSignal.timeout(30000),
@@ -31,10 +38,16 @@ export class CommerceService {
       referrerPolicy: 'no-referrer',
       cache: 'no-store',
     });
-    const result = await response.json();
-    if (!response.ok)
-      throw new Error(result.error || 'Unable to complete this request. Please retry.');
-    return result as T;
+    const result: unknown = await response.json();
+    if (!response.ok) {
+      const error = record(result)['error'];
+      throw new Error(
+        typeof error === 'string' && error.length <= 1000
+          ? error
+          : 'Unable to complete this request. Please retry.',
+      );
+    }
+    return decode(result);
   }
   newKey(): string {
     return Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>

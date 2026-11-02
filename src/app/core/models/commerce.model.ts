@@ -42,16 +42,24 @@ export interface OrderQuote {
   payment: { id: string; label: string; instructions: string };
   quoteFingerprint: string;
 }
-export interface LedgerOrder extends Omit<OrderQuote, 'quoteFingerprint'> {
+export interface LedgerOrder extends Omit<OrderQuote, 'quoteFingerprint' | 'reservationMinutes'> {
   id: string;
   createdAt: number;
   updatedAt: number;
   version: number;
-  fulfillmentStatus: string;
-  paymentStatus: string;
+  fulfillmentStatus:
+    | 'requested'
+    | 'awaiting_confirmation'
+    | 'confirmed'
+    | 'in_production'
+    | 'dispatched'
+    | 'delivered'
+    | 'cancelled'
+    | 'expired';
+  paymentStatus: 'unpaid' | 'deposit_paid' | 'fully_paid' | 'partially_refunded' | 'refunded';
   paidCents: number;
   refundedCents: number;
-  reservationState: string;
+  reservationState: 'held' | 'committed' | 'released';
   reservationExpiresAt: number;
   contact?: {
     fullName: string;

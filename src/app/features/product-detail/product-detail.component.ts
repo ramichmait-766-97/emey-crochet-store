@@ -3,21 +3,37 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
-import { combineLatest, map, tap } from 'rxjs';
+import { Subject, catchError, combineLatest, map, of, startWith, switchMap, tap } from 'rxjs';
 import { CartService } from '../../core/services/cart.service';
 import { ProductImagePipe } from '../../shared/pipes/product-image.pipe';
 import { ProductService } from '../../core/services/product.service';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { Product } from '../../core/models/product.model';
+import { ImageKitPipe, ImageKitSrcsetPipe } from '../../shared/pipes/imagekit.pipe';
+import { ImageFallbackDirective } from '../../shared/directives/image-fallback.directive';
+import { ProductGalleryComponent } from '../../shared/components/product-gallery/product-gallery.component';
 
 @Component({
   standalone: true,
-  imports: [AsyncPipe, CurrencyPipe, RouterLink, ProductImagePipe, FormsModule],
+  imports: [
+    AsyncPipe,
+    CurrencyPipe,
+    RouterLink,
+    ProductImagePipe,
+    FormsModule,
+    ImageKitPipe,
+    ImageKitSrcsetPipe,
+    ImageFallbackDirective,
+    ProductGalleryComponent,
+  ],
   templateUrl: './product-detail.component.html',
   styleUrl: './product-detail.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProductDetailComponent {
+  reloadGallery(): void {
+    window.location.reload();
+  }
   private readonly title = inject(Title);
   private readonly route = inject(ActivatedRoute);
   private readonly products = inject(ProductService);
@@ -29,6 +45,7 @@ export class ProductDetailComponent {
     return product.variants?.find((item) => item.id === this.selectedVariant)?.imageUrl || '';
   }
   private productId = '';
+  private readonly reload$ = new Subject<void>();
   available(product: Product): number {
     return this.cart.available({
       product,
@@ -45,14 +62,26 @@ export class ProductDetailComponent {
   }
 
   readonly viewModel$ = combineLatest([
-    this.products.state$,
-    this.route.paramMap,
+    combineLatest([this.route.paramMap, this.reload$.pipe(startWith(undefined))]).pipe(
+      switchMap(([params]) =>
+        this.products.watchBySlug(params.get('slug') ?? '').pipe(
+          map((product) => ({ product, loading: false, error: '' })),
+          startWith({ product: undefined, loading: true, error: '' }),
+          catchError(() =>
+            of({
+              product: undefined,
+              loading: false,
+              error: 'This piece could not load. Please retry or contact the store.',
+            }),
+          ),
+        ),
+      ),
+    ),
     this.settings.settings$,
   ]).pipe(
-    map(([state, params, site]) => ({
+    map(([state, site]) => ({
       ...state,
       site,
-      product: state.products.find((product) => product.slug === params.get('slug')),
     })),
     tap((vm) => {
       if (vm.product?.id !== this.productId) {
@@ -64,6 +93,6 @@ export class ProductDetailComponent {
     }),
   );
   retry(): void {
-    this.products.refresh();
+    this.reload$.next();
   }
 }

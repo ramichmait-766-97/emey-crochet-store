@@ -219,7 +219,7 @@ export function ledger(db, now = () => Date.now()) {
 }
 async function body(request) {
   requireThat(
-    request.headers.get('Content-Type')?.startsWith('application/json'),
+    request.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase() === 'application/json',
     'Send JSON.',
     415,
   );
@@ -246,7 +246,8 @@ export function createCommerceHandler({
     const origin = request.headers.get('Origin') || '';
     const allowed = (env.ALLOWED_ORIGINS || '').split(',').map((item) => item.trim());
     const headers = {
-      'Cache-Control': 'no-store',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
       Vary: 'Origin',
       'Referrer-Policy': 'no-referrer',
       'X-Content-Type-Options': 'nosniff',
@@ -256,7 +257,8 @@ export function createCommerceHandler({
     Object.assign(headers, {
       'Access-Control-Allow-Origin': origin,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Turnstile-Token',
+      'Access-Control-Max-Age': '86400',
     });
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
     if (request.method !== 'POST') return reply({ error: 'Method not allowed.' }, 405);
@@ -285,19 +287,33 @@ export function createCommerceHandler({
         }
       }
       const path = new URL(request.url).pathname;
+      if (path === '/checkout')
+        requireThat(
+          request.headers.get('X-Turnstile-Token')?.trim(),
+          'Complete the checkout security check.',
+          401,
+        );
       const input = await body(request);
-      const db = database(env);
-      const service = ledger(db, clock);
+      requireThat(
+        input !== null && typeof input === 'object' && !Array.isArray(input),
+        'Invalid request payload.',
+      );
       if (path.startsWith('/admin/'))
         requireThat(user?.admin, 'Administrator access required.', 403);
-      if (path === '/quote') return reply(await service.quote(input, user));
+      if (path === '/quote' || path === '/checkout') checkoutInput(input);
       if (path === '/checkout') {
+        const challengeToken = request.headers.get('X-Turnstile-Token');
         requireThat(
-          env.TURNSTILE_SECRET &&
-            typeof input.challenge === 'string' &&
-            input.challenge.length <= 2048,
+          challengeToken && challengeToken.trim(),
           'Complete the checkout security check.',
-          403,
+          401,
+        );
+        requireThat(challengeToken.length <= 2048, 'Complete the checkout security check.', 403);
+        requireThat(env.TURNSTILE_SECRET, 'Order service has not been configured.', 503);
+        requireThat(
+          typeof input.quoteFingerprint === 'string' &&
+            /^[a-f0-9]{64}$/.test(input.quoteFingerprint),
+          'Invalid quote fingerprint.',
         );
         const challenge = await remote(
           'https://challenges.cloudflare.com/turnstile/v0/siteverify',
@@ -305,20 +321,29 @@ export function createCommerceHandler({
             method: 'POST',
             body: new URLSearchParams({
               secret: env.TURNSTILE_SECRET,
-              response: input.challenge,
+              response: challengeToken,
               remoteip: ip,
             }),
             signal: AbortSignal.timeout(10000),
           },
         );
+        requireThat(challenge.ok, 'Security check unavailable. Please try again.', 503);
         const verified = await challenge.json();
         requireThat(
-          verified.success &&
+          verified !== null &&
+            typeof verified === 'object' &&
+            !Array.isArray(verified) &&
+            verified.success === true &&
             verified.hostname === new URL(origin).hostname &&
             verified.action === 'checkout',
           'Security check expired. Please try again.',
           403,
         );
+      }
+      const db = database(env);
+      const service = ledger(db, clock);
+      if (path === '/quote') return reply(await service.quote(input, user));
+      if (path === '/checkout') {
         const order = await service.create(input, user);
         const [site] = await db.getMany(['siteSettings/public']);
         const number = site?.contacts

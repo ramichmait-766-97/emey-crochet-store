@@ -5,7 +5,8 @@ import { FirebaseService } from './firebase.service';
 import { AuthService } from './auth.service';
 import { SiteSettingsService } from './site-settings.service';
 import { CheckoutContact, OrderRequestEstimate } from '../models/order.model';
-import { CartLine, Product } from '../models/product.model';
+import { CartLine } from '../models/product.model';
+import { decodeProduct } from '../../types/commerce.contracts';
 import { prepareOrderRequest } from '../utils/order-request';
 
 /** Prepares an estimate; sending, payment and stock confirmation happen with the store. */
@@ -25,7 +26,7 @@ export class OrderService {
           const snapshot = await getDocFromServer(doc(this.db, `products/${line.product.id}`));
           if (!snapshot.exists())
             throw new Error('A piece in your bag is no longer available. Please update your bag.');
-          const product = snapshot.data() as Product;
+          const product = decodeProduct({ ...snapshot.data(), id: snapshot.id });
           if (
             !product.active ||
             product.quantity < line.quantity ||

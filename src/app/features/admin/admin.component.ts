@@ -1,4 +1,4 @@
-import { AsyncPipe, CurrencyPipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -15,10 +15,19 @@ import { ContactMethod, SiteSettings } from '../../core/models/site-settings.mod
 import { AdminStoreService, ProductDraft } from '../../core/services/admin-store.service';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { productImageSrc } from '../../core/utils/product-image';
+import { ImageKitPipe, ImageKitSrcsetPipe } from '../../shared/pipes/imagekit.pipe';
+import { ImageFallbackDirective } from '../../shared/directives/image-fallback.directive';
 
 @Component({
   standalone: true,
-  imports: [AsyncPipe, CurrencyPipe, FormsModule, RouterLink],
+  imports: [
+    CurrencyPipe,
+    FormsModule,
+    RouterLink,
+    ImageKitPipe,
+    ImageKitSrcsetPipe,
+    ImageFallbackDirective,
+  ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -41,6 +50,7 @@ export class AdminComponent implements OnInit {
   settingsDraft?: SiteSettings;
 
   async ngOnInit(): Promise<void> {
+    void this.admin.loadProducts(true);
     try {
       const settings = await firstValueFrom(this.siteSettings.settings$);
       this.beginSettings(settings);

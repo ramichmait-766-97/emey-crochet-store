@@ -1,20 +1,13 @@
-import { collectionData } from '../utils/firestore-streams';
 import { FirebaseService } from './firebase.service';
-import { Injectable, inject, signal } from '@angular/core';
-import {
-  collection,
-  deleteField,
-  doc,
-  runTransaction,
-  serverTimestamp,
-  setDoc,
-} from 'firebase/firestore';
-import { Observable, catchError, map, of, shareReplay } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { deleteField, doc, runTransaction, serverTimestamp, setDoc } from 'firebase/firestore';
 import { PRODUCT_CATEGORIES } from '../constants/store.constants';
 import { Product } from '../models/product.model';
 import { SiteSettings } from '../models/site-settings.model';
-import { productImageSrc } from '../utils/product-image';
 import { ImageUploadService } from './image-upload.service';
+import { decodeProduct } from '../../types/commerce.contracts';
+import { DEFAULT_CATALOG_FILTERS } from '../../types/commerce.contracts';
+import { ProductService } from './product.service';
 
 export type ProductDraft = Omit<Product, 'createdAt' | 'modifiedAt'> & {
   createdAt?: unknown;
@@ -25,9 +18,15 @@ export type ProductDraft = Omit<Product, 'createdAt' | 'modifiedAt'> & {
 export class AdminStoreService {
   private readonly firestore = inject(FirebaseService).firestore;
   private readonly imageUpload = inject(ImageUploadService);
-  readonly loadError = signal('');
-
-  readonly products$ = this.createProductStream();
+  private readonly catalog = inject(ProductService);
+  readonly loadError = this.catalog.error;
+  readonly products = this.catalog.displayProducts;
+  readonly loadingProducts = this.catalog.isLoading;
+  readonly hasMoreProducts = this.catalog.hasMorePages;
+  readonly rejectedProducts = this.catalog.rejectedProducts;
+  loadProducts(reset = false): Promise<void> {
+    return this.catalog.fetchNextPage({ ...DEFAULT_CATALOG_FILTERS, limit: 25 }, reset, true);
+  }
 
   async saveProduct(draft: ProductDraft, file?: File, galleryFiles: File[] = []): Promise<void> {
     if (
@@ -106,14 +105,17 @@ export class AdminStoreService {
     }
 
     await runTransaction(this.firestore, async (transaction) => {
-      const current = (await transaction.get(productRef)).data();
-      if ((current?.['inventoryVersion'] || 0) !== (draft.inventoryVersion || 0))
+      const snapshot = await transaction.get(productRef);
+      const current = snapshot.exists()
+        ? decodeProduct({ ...snapshot.data(), id: snapshot.id })
+        : undefined;
+      if ((current?.inventoryVersion || 0) !== (draft.inventoryVersion || 0))
         throw new Error('Stock changed while editing. Reopen this product before saving.');
-      const oldMatrix = (current?.['variants'] || []).map(
+      const oldMatrix = (current?.variants || []).map(
         (item: { id: string; color: string; size: string }) => [item.id, item.color, item.size],
       );
       if (
-        current?.['reservedUnits'] > 0 &&
+        (current?.reservedUnits ?? 0) > 0 &&
         JSON.stringify(oldMatrix) !==
           JSON.stringify(variants.map((item) => [item.id, item.color, item.size]))
       )
@@ -131,7 +133,7 @@ export class AdminStoreService {
           colors: draft.colors ?? [],
           gallery,
           variants,
-          inventoryVersion: (current?.['inventoryVersion'] || 0) + 1,
+          inventoryVersion: (current?.inventoryVersion || 0) + 1,
           price: Number(draft.price),
           quantity: variants.length
             ? variants.reduce((total, item) => total + item.quantity, 0)
@@ -151,6 +153,7 @@ export class AdminStoreService {
         { merge: true },
       );
     });
+    await this.loadProducts(true);
   }
 
   async saveSettings(settings: SiteSettings): Promise<void> {
@@ -178,25 +181,6 @@ export class AdminStoreService {
         modifiedAt: serverTimestamp(),
       },
       { merge: true },
-    );
-  }
-
-  private createProductStream(): Observable<Product[]> {
-    return collectionData<Product>(collection(this.firestore, 'products'), { idField: 'id' }).pipe(
-      map((products) => {
-        this.loadError.set('');
-        return products.map((product) => ({
-          ...product,
-          imageUrl: productImageSrc(product),
-          gallery: product.gallery ?? [],
-          colors: product.colors ?? [],
-        }));
-      }),
-      shareReplay({ bufferSize: 1, refCount: true }),
-      catchError(() => {
-        this.loadError.set('We could not load your products. Please refresh and try again.');
-        return of([] as Product[]);
-      }),
     );
   }
 

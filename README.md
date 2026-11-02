@@ -1,6 +1,6 @@
 # Emey Crochet Store
 
-Angular 20 storefront with Firebase Authentication, Firestore realtime catalogs,
+Angular 20 storefront with Firebase Authentication, bounded Firestore catalog pages,
 ImageKit product photos, and a Cloudflare Worker for secure admin uploads.
 
 ## Development and checks
@@ -42,8 +42,12 @@ Avoid the legacy `firebase:deploy` command: it also deploys Functions and requir
 ## Store behavior
 
 - Firebase project: `emey-crochet-store`; Firestore database: `maindb`.
-- Catalogs come from Firestore realtime listeners. Public pages show active
-  products; admin sees hidden products as well. There is no demo catalog fallback.
+- Catalogs use deterministic server cursor pages (shop 12, home preview 8, admin
+  25, each with one lookahead); public pages show active products and admin includes
+  hidden products. Detail and cart use bounded live slug/ID queries. Name search
+  is case-sensitive prefix matching. See [CATALOG.md](CATALOG.md) for contracts,
+  sorting, freshness limits and the 37 new product indexes that must be deployed to
+  maindb before source rollout. There is no demo catalog fallback.
 - Admin access requires the Firebase Auth custom claim `admin: true`.
 - Product photos are hosted on ImageKit. Admin accepts WebP/JPEG/PNG up to 5 MiB;
   the Worker verifies the Firebase admin token and uploads using its secret key.

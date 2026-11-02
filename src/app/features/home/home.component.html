@@ -22,9 +22,13 @@
   <div class="visual">
     <a routerLink="/product/sunflower-drawstring-bag" aria-label="View Sunflower Drawstring Bag">
       <img
+        appImageFallback
         src="assets/products/sunflower-bag.webp"
         alt="Sunflower crochet bag"
         fetchpriority="high"
+        width="800"
+        height="1000"
+        decoding="async"
       />
     </a>
     <div class="float">
@@ -42,36 +46,64 @@
     </div>
     <a routerLink="/shop">Shop all pieces →</a>
   </div>
-  <div class="cat-grid">
-    <a routerLink="/shop" [queryParams]="{ category: 'Apparel' }">
-      <img
-        src="assets/products/yellow-child-dress.webp"
-        alt="Yellow crochet dress"
-        loading="lazy"
-      />
-      <span>Apparel →</span>
-    </a>
-    <a routerLink="/shop" [queryParams]="{ category: 'Bags & Accessories' }">
-      <img
-        src="assets/products/royal-blue-frame-bag.webp"
-        alt="Royal blue crochet handbag"
-        loading="lazy"
-      />
-      <span>Bags & Accessories →</span>
-    </a>
-    <a routerLink="/shop" [queryParams]="{ category: 'Home Decor' }">
-      <img
-        src="assets/products/geometric-blanket.webp"
-        alt="Geometric crochet blanket"
-        loading="lazy"
-      />
-      <span>Home Decor →</span>
-    </a>
-    <a routerLink="/shop" [queryParams]="{ category: 'Keychains' }">
-      <img src="assets/products/flower-keychains.webp" alt="Flower keychains" loading="lazy" />
-      <span>Little gifts →</span>
-    </a>
-  </div>
+  @defer (on viewport) {
+    <div class="cat-grid">
+      <a routerLink="/shop" [queryParams]="{ category: 'Apparel' }">
+        <img
+          appImageFallback
+          src="assets/products/yellow-child-dress.webp"
+          alt="Yellow crochet dress"
+          loading="lazy"
+          width="400"
+          height="500"
+          decoding="async"
+        />
+        <span>Apparel →</span>
+      </a>
+      <a routerLink="/shop" [queryParams]="{ category: 'Bags & Accessories' }">
+        <img
+          appImageFallback
+          src="assets/products/royal-blue-frame-bag.webp"
+          alt="Royal blue crochet handbag"
+          loading="lazy"
+          width="400"
+          height="500"
+          decoding="async"
+        />
+        <span>Bags & Accessories →</span>
+      </a>
+      <a routerLink="/shop" [queryParams]="{ category: 'Home Decor' }">
+        <img
+          appImageFallback
+          src="assets/products/geometric-blanket.webp"
+          alt="Geometric crochet blanket"
+          loading="lazy"
+          width="400"
+          height="500"
+          decoding="async"
+        />
+        <span>Home Decor →</span>
+      </a>
+      <a routerLink="/shop" [queryParams]="{ category: 'Keychains' }">
+        <img
+          appImageFallback
+          src="assets/products/flower-keychains.webp"
+          alt="Flower keychains"
+          loading="lazy"
+          width="400"
+          height="500"
+          decoding="async"
+        />
+        <span>Little gifts →</span>
+      </a>
+    </div>
+  } @placeholder {
+    <div class="cat-grid" aria-hidden="true">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="category-skeleton skeleton-shimmer"></div>
+      }
+    </div>
+  }
 </section>
 <section class="featured shell">
   <div class="section-head">
@@ -81,28 +113,45 @@
     </div>
     <a routerLink="/shop" [queryParams]="{ collection: 'new', sort: 'new' }">New arrivals →</a>
   </div>
-  @if (products.state$ | async; as state) {
-    @if (state.loading) {
-      <div class="skeleton-grid" role="status" aria-label="Loading featured pieces">
-        @for (i of [1, 2, 3, 4]; track i) {
-          <div class="skeleton"></div>
+  @if (products.isLoading()) {
+    <div class="product-grid" role="status" aria-label="Loading featured pieces">
+      @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
+        <app-product-card-skeleton />
+      }
+    </div>
+  } @else if (products.error()) {
+    <div class="state-panel" role="alert">
+      <h3>We couldn't load the collection</h3>
+      <p>{{ products.error() }}</p>
+      <button class="btn ghost" (click)="refresh()">Try again</button>
+    </div>
+  } @else {
+    <div class="product-grid">
+      @for (product of products.displayProducts(); track product.id) {
+        @defer (on viewport) {
+          <app-product-card
+            [product]="product"
+            sizes="(max-width: 560px) calc((100vw - 37px) / 2), (max-width: 900px) calc((100vw - 64px) / 2), (max-width: 1280px) calc((100vw - 112px) / 4), 292px"
+          />
+        } @placeholder {
+          <app-product-card-skeleton />
+        } @loading {
+          <app-product-card-skeleton />
+        } @error {
+          <div class="catalog-card-error" role="alert">
+            <app-product-card-skeleton />
+            <div class="catalog-error-message">
+              <p>This piece couldn't load.</p>
+              <button class="btn ghost" type="button" (click)="reloadCatalog()">
+                Reload catalog
+              </button>
+            </div>
+          </div>
         }
-      </div>
-    } @else if (state.error) {
-      <div class="state-panel" role="alert">
-        <h3>We couldn't load the collection</h3>
-        <p>{{ state.error }}</p>
-        <button class="btn ghost" (click)="products.refresh()">Try again</button>
-      </div>
-    } @else {
-      <div class="product-grid">
-        @for (product of state.products.slice(0, 8); track product.id) {
-          <app-product-card [product]="product" />
-        } @empty {
-          <p>New handmade pieces are on their way. Check back soon.</p>
-        }
-      </div>
-    }
+      } @empty {
+        <p>New handmade pieces are on their way. Check back soon.</p>
+      }
+    </div>
   }
   <div class="collection-more">
     <a class="btn ghost" routerLink="/shop">Explore all pieces →</a>

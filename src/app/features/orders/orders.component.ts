@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommerceService } from '../../core/services/commerce.service';
 import { LedgerOrder, OrderPage } from '../../core/models/commerce.model';
+import { decodeOrderResponse, decodeOrderPage } from '../../types/commerce.contracts';
 
 @Component({
   standalone: true,
@@ -62,15 +63,23 @@ export class OrdersComponent {
     try {
       if (this.statusOnly) {
         const access = new URLSearchParams(location.hash.slice(1)).get('access') || '';
-        const result = await this.api.call<{ order: LedgerOrder }>('/order-status', {
-          id: this.route.snapshot.paramMap.get('id'),
-          access,
-        });
+        const result = await this.api.call(
+          '/order-status',
+          {
+            id: this.route.snapshot.paramMap.get('id'),
+            access,
+          },
+          decodeOrderResponse,
+        );
         this.select(result.order);
       } else {
-        const result = await this.api.call<OrderPage>(this.admin ? '/admin/orders' : '/my-orders', {
-          cursor: more ? this.cursor : null,
-        });
+        const result = await this.api.call(
+          this.admin ? '/admin/orders' : '/my-orders',
+          {
+            cursor: more ? this.cursor : null,
+          },
+          decodeOrderPage,
+        );
         this.orders.set(more ? [...this.orders(), ...result.orders] : result.orders);
         this.cursor = result.cursor;
         if (!more) this.selected.set(null);
@@ -88,14 +97,18 @@ export class OrdersComponent {
     this.error.set('');
     this.notice.set('');
     try {
-      const result = await this.api.call<{ order: LedgerOrder }>('/admin/order', {
-        id: order.id,
-        version: order.version,
-        fulfillmentStatus: this.fulfillment,
-        paidCents: Math.round(this.paid * 100),
-        refundedCents: Math.round(this.refunded * 100),
-        note: this.note,
-      });
+      const result = await this.api.call(
+        '/admin/order',
+        {
+          id: order.id,
+          version: order.version,
+          fulfillmentStatus: this.fulfillment,
+          paidCents: Math.round(this.paid * 100),
+          refundedCents: Math.round(this.refunded * 100),
+          note: this.note,
+        },
+        decodeOrderResponse,
+      );
       this.orders.update((orders) =>
         orders.map((item) => (item.id === result.order.id ? result.order : item)),
       );

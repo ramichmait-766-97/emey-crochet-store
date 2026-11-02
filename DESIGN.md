@@ -69,6 +69,15 @@ two columns to one at 820px. New commerce forms use natural document scrolling;
 order rows collapse at 640px. Shared commerce layouts live in
 `src/app/features/commerce.scss`, not duplicate screen-specific stylesheets.
 
+Catalog photos now use square aspect-ratio boxes; hero/collection/detail photos
+retain portrait 4:5 frames. Intrinsic dimensions and responsive width candidates
+reserve geometry without fixed pixel photo heights. Catalog metadata reserves six
+rem and actions three rem so viewport-deferred cards match their skeletons. Titles
+use two lines with the full name in the link title and product page. Skeletons use
+the same shared card stylesheet, existing soft/cream tokens and reduced-motion rule.
+The empty router outlet reserves a viewport while its lazy view loads, keeping the
+footer below the fold; loaded page layouts retain their existing minimum height.
+
 ## Elevation, shapes and motion
 
 Use subtle structural borders and white/cream surfaces; new operational panels do

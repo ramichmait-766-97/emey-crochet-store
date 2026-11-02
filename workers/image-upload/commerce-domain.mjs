@@ -135,16 +135,26 @@ export function validateSettings(input) {
   };
 }
 export function checkoutInput(input) {
-  requireThat(/^[a-f0-9]{64}$/.test(input.checkoutKey || ''), 'Invalid checkout session.');
+  const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+  requireThat(object(input), 'Invalid checkout payload.');
+  requireThat(
+    typeof input.checkoutKey === 'string' && /^[a-f0-9]{64}$/.test(input.checkoutKey),
+    'Invalid checkout session.',
+  );
   requireThat(
     Array.isArray(input.lines) && input.lines.length > 0 && input.lines.length <= 15,
     'Your bag must contain 1–15 selections.',
   );
   const combined = new Map();
   for (const line of input.lines) {
+    requireThat(object(line), 'Invalid bag selection.');
     requireThat(
-      /^[A-Z0-9_-]{1,128}$/.test(line.productId) &&
-        (!line.variantId || /^[a-zA-Z0-9_-]{1,64}$/.test(line.variantId)) &&
+      typeof line.productId === 'string' &&
+        /^[A-Z0-9_-]{1,128}$/.test(line.productId) &&
+        (line.variantId === null ||
+          line.variantId === undefined ||
+          (typeof line.variantId === 'string' &&
+            /^(?:[a-zA-Z0-9_-]{1,64})?$/.test(line.variantId))) &&
         Number.isInteger(line.quantity) &&
         line.quantity > 0 &&
         line.quantity <= 20,
@@ -160,6 +170,12 @@ export function checkoutInput(input) {
     requireThat(combined.get(key).quantity <= 20, 'Limit 20 per selection.');
   }
   const raw = input.contact || {};
+  requireThat(object(raw), 'Invalid contact details.');
+  for (const field of ['email', 'address', 'building', 'notes'])
+    requireThat(
+      raw[field] === undefined || typeof raw[field] === 'string',
+      'Invalid contact details.',
+    );
   const contact = {
     fullName: text(raw.fullName, 120, 'name', true),
     phone: text(raw.phone, 40, 'phone', true),

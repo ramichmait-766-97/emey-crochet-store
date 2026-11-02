@@ -4,15 +4,20 @@
   gap: 6vw;
   padding-top: 4rem;
 }
-.image img {
+.detail-photo {
   width: 100%;
-  height: min(760px, 75vh);
+  height: auto;
+  aspect-ratio: 4 / 5;
   object-fit: cover;
   border-radius: 24px;
 }
 .info {
   max-width: 560px;
   padding-top: 1rem;
+}
+.detail-copy-skeleton {
+  min-height: 24rem;
+  border-radius: 14px;
 }
 .back {
   display: block;
@@ -101,9 +106,6 @@
   .back {
     margin-bottom: 2rem;
   }
-  .image img {
-    height: 560px;
-  }
 }
 .view-bag {
   display: block;
@@ -112,28 +114,6 @@
   font-size: 0.85rem;
   text-align: center;
   text-decoration: underline;
-}
-.gallery {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 16px;
-}
-.gallery button {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px;
-  cursor: pointer;
-  background: white;
-  color: var(--ink);
-}
-.gallery button[aria-pressed='true'] {
-  outline: 2px solid var(--brown);
-}
-.gallery img {
-  width: 65px;
-  height: 65px;
-  object-fit: cover;
 }
 select {
   display: block;

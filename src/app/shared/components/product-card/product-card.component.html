@@ -2,7 +2,18 @@
   @if (settings.settings$ | async; as site) {
     <article>
       <a class="image" [routerLink]="['/product', item.slug]">
-        <img [src]="item | productImage: 600" [alt]="item.name" loading="lazy" decoding="async" />
+        @let source = item | productImage;
+        <img
+          [src]="source | imagekit: { width: 400 }"
+          [attr.srcset]="source | imagekitSrcset: [200, 400, 600, 800]"
+          [sizes]="sizes()"
+          width="400"
+          height="400"
+          [appImageFallback]="source"
+          [alt]="item.name"
+          [attr.loading]="eager() ? 'eager' : 'lazy'"
+          decoding="async"
+        />
         @if (item.newArrival) {
           <span class="badge">New</span>
         } @else if (item.bestSeller) {
@@ -13,7 +24,7 @@
       <div class="meta">
         <div>
           <small>{{ item.category }}</small>
-          <a [routerLink]="['/product', item.slug]">
+          <a [routerLink]="['/product', item.slug]" [title]="item.name">
             <h3>{{ item.name }}</h3>
           </a>
         </div>

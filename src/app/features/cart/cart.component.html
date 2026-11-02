@@ -3,6 +3,9 @@
     <div>
       <span class="eyebrow">YOUR BAG</span>
       <h1>Your selected pieces</h1>
+      @if (cart.storageError()) {
+        <p class="message error" role="status">{{ cart.storageError() }}</p>
+      }
       @if (result; as order) {
         <div class="state-panel">
           <h2>Your order is recorded</h2>
@@ -36,7 +39,18 @@
       } @else {
         @for (line of cart.lines(); track line.product.id + ':' + line.variantId) {
           <div class="line">
-            <img [src]="line.product | productImage" [alt]="line.product.name" />
+            @let source = line.product | productImage;
+            <img
+              [src]="source | imagekit: { width: 160 }"
+              [attr.srcset]="source | imagekitSrcset: [100, 200, 320]"
+              sizes="(max-width: 520px) 82px, 105px"
+              width="105"
+              height="125"
+              [appImageFallback]="source"
+              [alt]="line.product.name"
+              loading="lazy"
+              decoding="async"
+            />
             <div class="grow">
               <a [routerLink]="['/product', line.product.slug]">
                 <b>{{ line.product.name }}</b>
@@ -60,7 +74,12 @@
                 <span>{{ line.quantity }}</span>
                 <button
                   type="button"
-                  [disabled]="busy || pending || line.quantity >= cart.available(line)"
+                  [disabled]="
+                    busy ||
+                    pending ||
+                    line.quantity >= cart.available(line) ||
+                    line.quantity >= cart.maxQuantity
+                  "
                   (click)="cart.setQuantity(line.product.id, line.quantity + 1, line.variantId)"
                   aria-label="Increase quantity"
                 >

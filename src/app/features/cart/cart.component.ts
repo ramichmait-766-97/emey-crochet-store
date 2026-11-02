@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { ProductImagePipe } from '../../shared/pipes/product-image.pipe';
+import { ImageKitPipe, ImageKitSrcsetPipe } from '../../shared/pipes/imagekit.pipe';
+import { ImageFallbackDirective } from '../../shared/directives/image-fallback.directive';
 import { CheckoutChallengeComponent } from '../../shared/components/checkout-challenge.component';
 import { CheckoutContact } from '../../core/models/order.model';
 import { CheckoutSettings, LedgerOrder, OrderQuote } from '../../core/models/commerce.model';
@@ -12,9 +14,16 @@ import { CartService } from '../../core/services/cart.service';
 import { CommerceService } from '../../core/services/commerce.service';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { ProfileService } from '../../core/services/profile.service';
+import {
+  decodeCheckoutResponse,
+  decodeOrderResponse,
+  decodePendingCheckout,
+  decodeQuote,
+} from '../../types/commerce.contracts';
 
 interface CheckoutRequest {
   checkoutKey: string;
+  cartOwner?: string | null;
   contact: CheckoutContact;
   deliveryId: string;
   paymentId: string;
@@ -30,6 +39,9 @@ interface CheckoutRequest {
     FormsModule,
     RouterLink,
     ProductImagePipe,
+    ImageKitPipe,
+    ImageKitSrcsetPipe,
+    ImageFallbackDirective,
     CheckoutChallengeComponent,
   ],
   templateUrl: './cart.component.html',
@@ -82,7 +94,7 @@ export class CartComponent {
       // Session-only recovery preserves one reservation identity after an uncertain network response.
       const saved = sessionStorage.getItem('emey-pending-checkout');
       if (saved) {
-        const request = JSON.parse(saved) as CheckoutRequest;
+        const request = decodePendingCheckout(JSON.parse(saved));
         if (/^[a-f0-9]{64}$/.test(request.checkoutKey)) {
           this.request = request;
           this.contact = request.contact;
@@ -131,13 +143,17 @@ export class CartComponent {
   private fingerprint(): string {
     return JSON.stringify([
       this.contact,
+      this.auth.currentUser()?.uid ?? null,
       this.deliveryId,
       this.paymentId,
       this.cart.lines().map((line) => [line.product.id, line.variantId || '', line.quantity]),
     ]);
   }
   get quoteMatches(): boolean {
-    return this.quotedFingerprint === this.fingerprint();
+    return (
+      this.request?.cartOwner === (this.auth.currentUser()?.uid ?? null) &&
+      this.quotedFingerprint === this.fingerprint()
+    );
   }
   async review(): Promise<void> {
     if (this.busy || this.pending) return;
@@ -146,8 +162,11 @@ export class CartComponent {
     this.quote = undefined;
     this.challenge = '';
     try {
+      if (this.auth.currentUser() === undefined)
+        throw new Error('Sign-in is still loading. Please retry.');
       this.request = {
         checkoutKey: this.api.newKey(),
+        cartOwner: this.auth.currentUser()?.uid ?? null,
         contact: { ...this.contact },
         deliveryId: this.deliveryId,
         paymentId: this.paymentId,
@@ -157,9 +176,10 @@ export class CartComponent {
           quantity: line.quantity,
         })),
       };
-      this.quote = await this.api.call<OrderQuote>('/quote', this.request);
+      const reviewedFingerprint = this.fingerprint();
+      this.quote = await this.api.call('/quote', this.request, decodeQuote);
       this.request.quoteFingerprint = this.quote.quoteFingerprint;
-      this.quotedFingerprint = this.fingerprint();
+      this.quotedFingerprint = reviewedFingerprint;
     } catch (error) {
       this.error = error instanceof Error ? error.message : 'Unable to review total.';
     } finally {
@@ -176,9 +196,11 @@ export class CartComponent {
       // If recovery cannot be saved, do not submit an order that this browser cannot safely retry.
       sessionStorage.setItem('emey-pending-checkout', JSON.stringify(this.request));
       this.pending = true;
-      const response = await this.api.call<{ order: LedgerOrder; whatsappUrl: string | null }>(
+      const response = await this.api.call(
         '/checkout',
-        { ...this.request, challenge: this.challenge },
+        this.request,
+        decodeCheckoutResponse,
+        this.challenge,
       );
       this.finish(response.order, response.whatsappUrl || '');
     } catch (error) {
@@ -201,10 +223,14 @@ export class CartComponent {
       const id = Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, '0'))
         .join('')
         .slice(0, 32);
-      const response = await this.api.call<{ order: LedgerOrder }>('/order-status', {
-        id,
-        access: this.request.checkoutKey,
-      });
+      const response = await this.api.call(
+        '/order-status',
+        {
+          id,
+          access: this.request.checkoutKey,
+        },
+        decodeOrderResponse,
+      );
       this.finish(response.order, '');
     } catch (error) {
       this.error = `${error instanceof Error ? error.message : 'Status unavailable.'} You can retry the same reservation with a fresh security check. If checkout details changed, contact the store before clearing recovery.`;
@@ -220,7 +246,14 @@ export class CartComponent {
     this.pending = false;
     this.quote = undefined;
     sessionStorage.removeItem('emey-pending-checkout');
-    if (!['expired', 'cancelled'].includes(order.fulfillmentStatus)) this.cart.clear();
+    // A reservation response/recovery must never clear another account's bag.
+    if (
+      this.request?.cartOwner !== undefined &&
+      this.auth.currentUser() !== undefined &&
+      this.request.cartOwner === (this.auth.currentUser()?.uid ?? null) &&
+      !['expired', 'cancelled'].includes(order.fulfillmentStatus)
+    )
+      this.cart.clear();
   }
   resetRecovery = false;
   clearRecovery(): void {

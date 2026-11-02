@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   GoogleAuthProvider,
   OAuthProvider,
@@ -13,7 +14,7 @@ import {
   onIdTokenChanged,
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { Observable, from, map, of, shareReplay, switchMap } from 'rxjs';
+import { Observable, catchError, from, map, of, shareReplay, switchMap } from 'rxjs';
 import { FirebaseService } from './firebase.service';
 import { StoreRole, StoreUser } from '../models/user.model';
 
@@ -31,6 +32,8 @@ export class AuthService {
       (error) => subscriber.error(error),
     ),
   ).pipe(shareReplay({ bufferSize: 1, refCount: true }));
+  // undefined means initialization is pending; null means confirmed guest.
+  readonly currentUser = toSignal(this.firebaseUser$.pipe(catchError(() => of(null))));
   readonly user$: Observable<StoreUser | null> = this.firebaseUser$.pipe(
     switchMap((user) =>
       !user

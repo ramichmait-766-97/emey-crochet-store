@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CheckoutSettings } from '../../core/models/commerce.model';
+import { decodeSettingsResponse } from '../../types/commerce.contracts';
 import { CommerceService } from '../../core/services/commerce.service';
 
 @Component({
@@ -68,7 +69,7 @@ export class CheckoutSettingsComponent {
     this.error.set('');
     this.notice.set('');
     try {
-      const result = await this.api.call<{ settings: CheckoutSettings }>(path, data);
+      const result = await this.api.call(path, data, decodeSettingsResponse);
       this.settings.set(result.settings);
       this.dirty = false;
       this.notice.set(

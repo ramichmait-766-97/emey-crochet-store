@@ -1,11 +1,28 @@
 import { Product } from '../models/product.model';
 import { PRODUCT_CATEGORIES } from '../constants/store.constants';
+import { CatalogQueryFilters } from '../../types/commerce.contracts';
 export type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'new';
 export interface CatalogFilters {
   collection: string;
   search: string;
   category: string;
   sort: SortOption;
+}
+export function catalogQueryFilters(filters: CatalogFilters): CatalogQueryFilters {
+  const searchToken = filters.search.trim() || null;
+  return {
+    category: filters.category || null,
+    searchToken,
+    sortField: !searchToken && filters.sort.startsWith('price-') ? 'basePriceInCents' : 'title',
+    sortDirection: !searchToken && filters.sort === 'price-desc' ? 'desc' : 'asc',
+    limit: 12,
+    collection:
+      filters.collection === 'bestsellers'
+        ? 'bestsellers'
+        : filters.collection === 'new' || filters.sort === 'new'
+          ? 'new'
+          : null,
+  };
 }
 export function parseCatalogFilters(params: { get(key: string): string | null }): CatalogFilters {
   const category = params.get('category') ?? '';
@@ -22,6 +39,7 @@ export function parseCatalogFilters(params: { get(key: string): string | null })
       : 'featured',
   };
 }
+/** Legacy pure fixture helper; production discovery uses catalogQueryFilters. */
 export function filterCatalog(products: Product[], filters: CatalogFilters): Product[] {
   const term = filters.search.trim().toLocaleLowerCase();
   return products

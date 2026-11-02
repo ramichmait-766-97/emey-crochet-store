@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { FirebaseService } from './firebase.service';
+import { imageKitUrl, record, text } from '../../types/commerce.contracts';
 
 @Injectable({ providedIn: 'root' })
 export class ImageUploadService {
@@ -39,15 +40,20 @@ export class ImageUploadService {
       body,
       signal: AbortSignal.timeout(60000),
     });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Image upload failed. Please try again.');
-    if (
-      typeof result.imageUrl !== 'string' ||
-      !result.imageUrl.startsWith(environment.images.urlEndpoint + '/') ||
-      typeof result.imageFileId !== 'string'
-    ) {
-      throw new Error('Image hosting returned an unexpected response.');
-    }
-    return result;
+    const result = record(await response.json());
+    if (!response.ok)
+      throw new Error(
+        typeof result['error'] === 'string'
+          ? text(result['error'])
+          : 'Image upload failed. Please try again.',
+      );
+    const imageContentType = text(result['imageContentType'], 20);
+    if (!['image/webp', 'image/jpeg', 'image/png'].includes(imageContentType))
+      throw new Error('Invalid hosted image type.');
+    return {
+      imageUrl: imageKitUrl(result['imageUrl']),
+      imageFileId: text(result['imageFileId'], 256),
+      imageContentType,
+    };
   }
 }

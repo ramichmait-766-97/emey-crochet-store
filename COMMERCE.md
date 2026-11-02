@@ -183,7 +183,7 @@ these production commands has been executed by the agent.
 
 ### 1. Index deployment
 
-The exact source is `firestore.indexes.json`. Its three composite indexes serve:
+The exact source is `firestore.indexes.json`. Its three **order** composite indexes serve:
 admin pages (`schemaVersion`, `createdAt`); member pages (`schemaVersion`, `userId`,
 `createdAt`); due holds (`reservationState`, `reservationExpiresAt`). Their collection
 scope is deliberate. The default descending document-name tie breaker matches the
@@ -212,7 +212,9 @@ node $firebaseCli deploy --project emey-crochet-store --only firestore:indexes
 
 `firebase.json` selects `maindb`; the deploy command does not need a separate
 `--database` option. In Firebase Console select Firestore database `maindb`, then
-Indexes; wait for all three definitions to finish building and be enabled. Index
+Indexes; wait for all required definitions to finish building and be enabled. The
+bounded catalog also adds 37 product composites; see CATALOG.md for their complete
+query matrix and deployment prerequisites. Index
 deployment does not rewrite product/order data. Field exemptions remove indexes,
 not contact/gallery/variant document fields. Deploy new Firestore rules separately
 before using the new client/configuration paths:
@@ -364,3 +366,36 @@ operational decisions and independent integration verification.
 - Workers limits: https://developers.cloudflare.com/workers/platform/limits/
 - Rate-limit accuracy: https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
 
+## Edge transaction security contract — local implementation
+
+The commerce entrypoint remains `commerce.mjs` with `wrangler.commerce.jsonc`;
+`wrangler.jsonc` continues to deploy the separate authenticated image uploader.
+Do not replace it with the example commerce configuration or use `https://web.app`.
+The two explicit storefront origins are enforced in every environment, including
+preflight; Origin is a browser boundary, not authentication.
+
+Checkout alone requires `X-Turnstile-Token` (401 missing, 403 invalid). Quotes,
+private status, authenticated history and administrator routes retain their own
+existing authorization contracts. CommerceService sends the ephemeral widget token
+only in this header; it is excluded from checkout JSON and persisted recovery.
+CORS permits the header. The existing `TURNSTILE_SECRET` handle remains a Wrangler
+secret; no secret rename or plaintext variable is required. Siteverify uses the
+canonical challenges.cloudflare.com endpoint, 10-second timeout, HTTP success,
+strict boolean success and exact storefront hostname / checkout action checks.
+Provider errors fail closed with redacted 503 responses. The widget is destroyed
+while submitting and recreated afterward, requiring a fresh single-use challenge.
+
+Before constructing the database adapter, the Worker rejects non-object payloads,
+validates checkout lines/contact/key and the reviewed fingerprint, and completes
+Turnstile verification. Normalized domain projections discard injected pricing,
+identity and payment-state fields; server pricing/atomic reservation remains intact.
+The request stream is still capped at 24 KiB. All API replies carry no-store,
+nosniff, no-referrer and a restrictive JSON-response CSP. This CSP does not replace
+a separately tested Hosting document CSP (still pending).
+
+The existing 30-per-60-second IP limiter remains mandatory and fails closed.
+Cloudflare's binding is approximate and per-location, not a globally exact quota:
+https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
+Compatibility date is 2026-11-02 and NODE_ENV is production. Observability remains
+disabled to avoid introducing transaction request logs; no body/token logging is
+added. Live secrets, widget/sitekey, API URL, IAM and deployment QA remain pending.

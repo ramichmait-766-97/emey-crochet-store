@@ -143,6 +143,10 @@ button:disabled {
 main {
   min-height: 55vh;
 }
+/* Keep the footer below the viewport while a lazy route has no rendered view. */
+main:has(> router-outlet:only-child) {
+  min-height: 100svh;
+}
 #main-content {
   scroll-margin-top: 150px;
 }
@@ -207,6 +211,64 @@ main {
   grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
 }
+.skeleton-shimmer {
+  background: linear-gradient(100deg, var(--soft), var(--cream), var(--soft));
+  background-size: 200%;
+  animation: shimmer 1.6s linear infinite;
+}
+img[appImageFallback] {
+  background-color: var(--soft);
+  background-size: cover;
+  background-position: center;
+}
+.catalog-card-error {
+  position: relative;
+}
+.product-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.gallery-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 83px;
+  width: 83px;
+  height: auto;
+  aspect-ratio: 1;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background-color: var(--cream);
+  color: var(--ink);
+}
+button.gallery-tile {
+  cursor: pointer;
+}
+.gallery-tile[aria-pressed='true'] {
+  outline: 2px solid var(--brown);
+}
+.gallery-tile img {
+  width: 65px;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.catalog-error-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 1rem;
+  background: var(--soft);
+  border-radius: 22px;
+}
 .skeleton {
   min-height: 320px;
   background: linear-gradient(100deg, var(--soft), #fff8f2, var(--soft));
@@ -259,7 +321,8 @@ button,
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .skeleton {
+  .skeleton,
+  .skeleton-shimmer {
     animation: none;
   }
 }

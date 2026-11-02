@@ -4,7 +4,7 @@
     <span>/</span>
     <span>Shop</span>
   </nav>
-  @if (vm$ | async; as vm) {
+  @if (vm(); as vm) {
     <div class="intro">
       <span class="eyebrow">THE EMEY COLLECTION</span>
       <h1>
@@ -40,56 +40,109 @@
     </nav>
     <div class="toolbar">
       <label>
-        <span>Find your piece</span>
+        <span>Name starts with (case-sensitive)</span>
         <input
           type="search"
           [ngModel]="vm.search"
           (ngModelChange)="setFilter('q', $event)"
-          placeholder="Search by name, colour or collection"
+          placeholder="Enter the beginning of a product name"
+          aria-describedby="catalog-search-help"
         />
       </label>
       <label>
         <span>Sort by</span>
         <select [ngModel]="vm.sort" (ngModelChange)="setFilter('sort', $event)">
-          <option value="featured">Featured</option>
+          <option value="featured">Name: A to Z</option>
           <option value="new">New arrivals</option>
-          <option value="price-asc">Price: low to high</option>
-          <option value="price-desc">Price: high to low</option>
+          <option value="price-asc" [disabled]="!!vm.search.trim()">Price: low to high</option>
+          <option value="price-desc" [disabled]="!!vm.search.trim()">Price: high to low</option>
         </select>
       </label>
     </div>
-    @if (vm.loading) {
-      <div class="skeleton-grid" aria-label="Loading products" role="status">
-        @for (i of [1, 2, 3, 4]; track i) {
-          <div class="skeleton"></div>
+    <p class="hint" id="catalog-search-help">
+      Search matches the beginning of the name, including capitalization. Results use name order
+      while searching.
+    </p>
+    <div class="results-bar">
+      <p role="status">
+        {{
+          vm.loading && !vm.items.length
+            ? 'Loading collection…'
+            : vm.error && !vm.items.length
+              ? 'Collection unavailable'
+              : vm.items.length + (vm.items.length === 1 ? ' piece loaded' : ' pieces loaded')
+        }}
+      </p>
+      @if (vm.search || vm.category || vm.collection) {
+        <button class="text-button" (click)="clear()">Clear filters</button>
+      }
+    </div>
+    @if (vm.rejected) {
+      <p class="hint" role="status">
+        Some product data could not be displayed. You can retry or continue to the next page.
+      </p>
+    }
+    @if (vm.loading && !vm.items.length) {
+      <div class="grid" aria-label="Loading products" role="status">
+        @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
+          <app-product-card-skeleton />
         }
       </div>
-    } @else if (vm.error) {
+    } @else if (vm.error && !vm.items.length) {
       <div class="state-panel" role="alert">
         <h2>The collection couldn't load</h2>
         <p>{{ vm.error }}</p>
-        <button class="btn primary" (click)="products.refresh()">Try again</button>
+        <button class="btn primary" type="button" (click)="retry()">Try again</button>
       </div>
     } @else {
-      <div class="results-bar">
-        <p role="status">
-          {{ vm.items.length }} {{ vm.items.length === 1 ? 'piece' : 'pieces'
-          }}{{ vm.category ? ' in this collection' : ' to discover' }}
-        </p>
-        @if (vm.search || vm.category || vm.collection) {
-          <button class="text-button" (click)="clear()">Clear filters</button>
-        }
-      </div>
       <div class="grid" [class.three-up]="vm.items.length === 3">
         @for (product of vm.items; track product.id) {
-          <app-product-card [product]="product" />
+          @defer (on viewport) {
+            <app-product-card
+              [product]="product"
+              [eager]="$index < 4"
+              [sizes]="
+                vm.items.length === 3
+                  ? '(max-width: 360px) calc(100vw - 24px), (max-width: 560px) calc((100vw - 37px) / 2), (max-width: 720px) calc((100vw - 53px) / 2), (max-width: 1280px) calc((100vw - 92px) / 3), 396px'
+                  : '(max-width: 360px) calc(100vw - 24px), (max-width: 560px) calc((100vw - 37px) / 2), (max-width: 720px) calc((100vw - 53px) / 2), (max-width: 1000px) calc((100vw - 92px) / 3), (max-width: 1280px) calc((100vw - 117px) / 4), 291px'
+              "
+            />
+          } @placeholder {
+            <app-product-card-skeleton />
+          } @loading {
+            <app-product-card-skeleton />
+          } @error {
+            <div class="catalog-card-error" role="alert">
+              <app-product-card-skeleton />
+              <div class="catalog-error-message">
+                <p>This piece couldn't load.</p>
+                <button class="btn ghost" type="button" (click)="reloadCatalog()">
+                  Reload catalog
+                </button>
+              </div>
+            </div>
+          }
         } @empty {
           <div class="state-panel">
             <span class="eyebrow">A FRESH START</span>
-            <h2>No pieces found</h2>
+            <h2>{{ vm.hasMore ? 'No displayable pieces in this page' : 'No pieces found' }}</h2>
             <p>Try another search or explore the complete collection.</p>
             <button class="btn primary" (click)="clear()">See all pieces</button>
           </div>
+        }
+      </div>
+      <div class="catalog-pagination">
+        @if (vm.error) {
+          <p role="alert">{{ vm.error }} Previously loaded pieces are still available.</p>
+        }
+        @if (vm.hasMore) {
+          <button class="btn ghost" type="button" [disabled]="vm.loading" (click)="loadMore()">
+            {{
+              vm.loading ? 'Loading more…' : vm.error ? 'Retry loading more' : 'Load more pieces'
+            }}
+          </button>
+        } @else if (vm.items.length) {
+          <p class="hint" role="status">All matching pieces are loaded.</p>
         }
       </div>
     }

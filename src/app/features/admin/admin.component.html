@@ -55,15 +55,47 @@
           <span>Stock</span>
           <span>Status</span>
         </div>
-        @for (product of admin.products$ | async; track product.id) {
+        @for (product of admin.products(); track product.id) {
           <button class="row" type="button" (click)="edit(product)">
             <span class="prod">
-              <img [src]="product.imageUrl" [alt]="product.name" loading="lazy" decoding="async" />
+              <img
+                [src]="product.imageUrl | imagekit: { width: 96 }"
+                [attr.srcset]="product.imageUrl | imagekitSrcset: [48, 96, 144]"
+                sizes="48px"
+                width="48"
+                height="55"
+                [appImageFallback]="product.imageUrl"
+                [alt]="product.name"
+                loading="lazy"
+                decoding="async"
+              />
               <b>{{ product.name }}</b>
             </span>
             <span>{{ product.price | currency: settingsDraft?.currency || 'USD' }}</span>
             <span>{{ product.quantity }}</span>
             <span>{{ product.active ? 'Active' : 'Hidden' }}</span>
+          </button>
+        }
+        @if (admin.rejectedProducts()) {
+          <p class="hint" role="status">Some malformed product records could not be displayed.</p>
+        }
+        @if (!admin.loadingProducts() && !admin.products().length && !admin.loadError()) {
+          <p class="hint">No products in this page.</p>
+        }
+        @if (admin.hasMoreProducts()) {
+          <button
+            class="btn ghost"
+            type="button"
+            [disabled]="admin.loadingProducts()"
+            (click)="admin.loadProducts()"
+          >
+            {{
+              admin.loadingProducts()
+                ? 'Loading products…'
+                : admin.loadError()
+                  ? 'Retry loading products'
+                  : 'Load more products'
+            }}
           </button>
         }
       </div>
@@ -182,7 +214,17 @@
           <h3>Additional photos</h3>
           @for (photo of draft.gallery; track photo) {
             <div class="gallery-editor">
-              <img [src]="photo" alt="Additional product photo" loading="lazy" />
+              <img
+                [src]="photo | imagekit: { width: 160 }"
+                [attr.srcset]="photo | imagekitSrcset: [80, 160, 240]"
+                sizes="70px"
+                width="70"
+                height="70"
+                [appImageFallback]="photo"
+                alt="Additional product photo"
+                loading="lazy"
+                decoding="async"
+              />
               <button type="button" class="btn ghost" (click)="draft.gallery.splice($index, 1)">
                 Remove photo
               </button>
