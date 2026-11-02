@@ -1,36 +1,106 @@
-import { AsyncPipe, CurrencyPipe } from '@angular/common';
+import { AsyncPipe, CurrencyPipe, DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { ProductImagePipe } from '../../shared/pipes/product-image.pipe';
 import { firstValueFrom } from 'rxjs';
-import { CheckoutContact, OrderRequestEstimate } from '../../core/models/order.model';
+import { ProductImagePipe } from '../../shared/pipes/product-image.pipe';
+import { CheckoutChallengeComponent } from '../../shared/components/checkout-challenge.component';
+import { CheckoutContact } from '../../core/models/order.model';
+import { CheckoutSettings, LedgerOrder, OrderQuote } from '../../core/models/commerce.model';
 import { AuthService } from '../../core/services/auth.service';
 import { CartService } from '../../core/services/cart.service';
-import { OrderService } from '../../core/services/order.service';
+import { CommerceService } from '../../core/services/commerce.service';
 import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { ProfileService } from '../../core/services/profile.service';
 
+interface CheckoutRequest {
+  checkoutKey: string;
+  contact: CheckoutContact;
+  deliveryId: string;
+  paymentId: string;
+  lines: { productId: string; variantId: string; quantity: number }[];
+  quoteFingerprint?: string;
+}
 @Component({
   standalone: true,
-  imports: [AsyncPipe, CurrencyPipe, FormsModule, RouterLink, ProductImagePipe],
+  imports: [
+    AsyncPipe,
+    CurrencyPipe,
+    DatePipe,
+    FormsModule,
+    RouterLink,
+    ProductImagePipe,
+    CheckoutChallengeComponent,
+  ],
   templateUrl: './cart.component.html',
-  styleUrl: './cart.component.scss',
+  styleUrls: ['./cart.component.scss', '../commerce.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CartComponent {
   readonly cart = inject(CartService);
   readonly auth = inject(AuthService);
   readonly settings = inject(SiteSettingsService);
-  private readonly orders = inject(OrderService);
+  readonly api = inject(CommerceService);
   private readonly profiles = inject(ProfileService);
   private readonly cdr = inject(ChangeDetectorRef);
+  config: CheckoutSettings | null = null;
+  configLoading = true;
   filling = false;
-
-  async useProfile(): Promise<void> {
-    if (this.filling || this.busy) return;
-    this.filling = true;
+  busy = false;
+  error = '';
+  quote?: OrderQuote;
+  result?: LedgerOrder;
+  whatsappUrl = '';
+  statusUrl = '';
+  challenge = '';
+  deliveryId = '';
+  paymentId = '';
+  private quotedFingerprint = '';
+  private request?: CheckoutRequest;
+  pending = false;
+  contact: CheckoutContact = {
+    fullName: '',
+    email: '',
+    phone: '',
+    address: '',
+    building: '',
+    notes: '',
+  };
+  constructor() {
+    void this.load();
+  }
+  async load(): Promise<void> {
+    this.configLoading = true;
     this.error = '';
+    if (!this.api.configured) {
+      this.configLoading = false;
+      this.cdr.markForCheck();
+      return;
+    }
+    try {
+      this.config = await this.api.settings();
+      // Session-only recovery preserves one reservation identity after an uncertain network response.
+      const saved = sessionStorage.getItem('emey-pending-checkout');
+      if (saved) {
+        const request = JSON.parse(saved) as CheckoutRequest;
+        if (/^[a-f0-9]{64}$/.test(request.checkoutKey)) {
+          this.request = request;
+          this.contact = request.contact;
+          this.deliveryId = request.deliveryId;
+          this.paymentId = request.paymentId;
+          this.pending = true;
+        }
+      } else await this.useProfile();
+    } catch {
+      this.error = 'Unable to load checkout. Check your connection and retry.';
+    } finally {
+      this.configLoading = false;
+      this.cdr.markForCheck();
+    }
+  }
+  async useProfile(): Promise<void> {
+    if (this.filling || this.busy || this.pending) return;
+    this.filling = true;
     try {
       const user = await firstValueFrom(this.auth.user$);
       if (!user) return;
@@ -42,7 +112,6 @@ export class CartComponent {
         phone: profile.phone,
         address: [
           profile.billing.addressLine1,
-          profile.billing.addressLine2,
           profile.billing.city,
           profile.billing.region,
           profile.billing.postalCode,
@@ -50,62 +119,117 @@ export class CartComponent {
         ]
           .filter(Boolean)
           .join(', '),
+        building: profile.billing.addressLine2,
       };
     } catch {
-      this.error = 'Unable to load your saved details. You can enter them below.';
+      this.error = 'Saved details could not load. You can enter them below.';
     } finally {
       this.filling = false;
       this.cdr.markForCheck();
     }
   }
-
-  contact: CheckoutContact = {
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    notes: '',
-  };
-
-  busy = false;
-  error = '';
-  result?: OrderRequestEstimate;
-  whatsappUrl = '#';
-  private requestFingerprint = '';
   private fingerprint(): string {
-    return JSON.stringify({
-      contact: this.contact,
-      lines: this.cart.lines().map((l) => [l.product.id, l.quantity, l.product.price]),
-    });
+    return JSON.stringify([
+      this.contact,
+      this.deliveryId,
+      this.paymentId,
+      this.cart.lines().map((line) => [line.product.id, line.variantId || '', line.quantity]),
+    ]);
   }
-  get requestMatches(): boolean {
-    return this.requestFingerprint === this.fingerprint();
+  get quoteMatches(): boolean {
+    return this.quotedFingerprint === this.fingerprint();
   }
-
-  async checkout(): Promise<void> {
-    if (this.busy || this.cart.lines().length === 0) {
-      return;
-    }
-
+  async review(): Promise<void> {
+    if (this.busy || this.pending) return;
     this.busy = true;
     this.error = '';
-
+    this.quote = undefined;
+    this.challenge = '';
     try {
-      this.result = await this.orders.prepare(this.cart.lines(), this.contact);
-      this.whatsappUrl = this.result.whatsappUrl ?? '#';
-      this.requestFingerprint = this.fingerprint();
+      this.request = {
+        checkoutKey: this.api.newKey(),
+        contact: { ...this.contact },
+        deliveryId: this.deliveryId,
+        paymentId: this.paymentId,
+        lines: this.cart.lines().map((line) => ({
+          productId: line.product.id,
+          variantId: line.variantId || '',
+          quantity: line.quantity,
+        })),
+      };
+      this.quote = await this.api.call<OrderQuote>('/quote', this.request);
+      this.request.quoteFingerprint = this.quote.quoteFingerprint;
+      this.quotedFingerprint = this.fingerprint();
     } catch (error) {
-      this.error = this.errorMessage(error);
+      this.error = error instanceof Error ? error.message : 'Unable to review total.';
     } finally {
       this.busy = false;
       this.cdr.markForCheck();
     }
   }
-
-  private errorMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
+  async reserve(): Promise<void> {
+    if (this.busy || !this.request || !this.challenge || (!this.pending && !this.quoteMatches))
+      return;
+    this.busy = true;
+    this.error = '';
+    try {
+      // If recovery cannot be saved, do not submit an order that this browser cannot safely retry.
+      sessionStorage.setItem('emey-pending-checkout', JSON.stringify(this.request));
+      this.pending = true;
+      const response = await this.api.call<{ order: LedgerOrder; whatsappUrl: string | null }>(
+        '/checkout',
+        { ...this.request, challenge: this.challenge },
+      );
+      this.finish(response.order, response.whatsappUrl || '');
+    } catch (error) {
+      this.error = `${error instanceof Error ? error.message : 'Connection interrupted.'} Check reservation status before starting another order.`;
+    } finally {
+      this.challenge = '';
+      this.busy = false;
+      this.cdr.markForCheck();
     }
-    return 'We could not place the order. Please try again.';
+  }
+  async recover(): Promise<void> {
+    if (!this.request || this.busy) return;
+    this.busy = true;
+    this.error = '';
+    try {
+      const bytes = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(this.request.checkoutKey),
+      );
+      const id = Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, '0'))
+        .join('')
+        .slice(0, 32);
+      const response = await this.api.call<{ order: LedgerOrder }>('/order-status', {
+        id,
+        access: this.request.checkoutKey,
+      });
+      this.finish(response.order, '');
+    } catch (error) {
+      this.error = `${error instanceof Error ? error.message : 'Status unavailable.'} You can retry the same reservation with a fresh security check. If checkout details changed, contact the store before clearing recovery.`;
+    } finally {
+      this.busy = false;
+      this.cdr.markForCheck();
+    }
+  }
+  private finish(order: LedgerOrder, whatsappUrl: string): void {
+    this.result = order;
+    this.whatsappUrl = whatsappUrl;
+    this.statusUrl = `${location.origin}/order/${order.id}#access=${this.request!.checkoutKey}`;
+    this.pending = false;
+    this.quote = undefined;
+    sessionStorage.removeItem('emey-pending-checkout');
+    if (!['expired', 'cancelled'].includes(order.fulfillmentStatus)) this.cart.clear();
+  }
+  resetRecovery = false;
+  clearRecovery(): void {
+    sessionStorage.removeItem('emey-pending-checkout');
+    this.pending = false;
+    this.request = undefined;
+    this.quote = undefined;
+    this.resetRecovery = false;
+    this.error =
+      'Recovery cleared. Any existing reservation remains valid until confirmed, cancelled or expired.';
   }
 }

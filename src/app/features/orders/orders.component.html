@@ -1,0 +1,178 @@
+<section class="shell commerce-page">
+  <nav class="commerce-nav" aria-label="Order navigation">
+    @if (admin) {
+      <a routerLink="/admin">Products and contacts</a>
+      <a routerLink="/admin/settings">Checkout settings</a>
+    } @else {
+      <a routerLink="/shop">Continue shopping</a>
+      <a routerLink="/account">Your account</a>
+    }
+  </nav>
+  <div class="commerce-heading">
+    <div>
+      <span class="eyebrow">{{ admin ? 'STORE OPERATIONS' : 'YOUR HANDMADE PIECES' }}</span>
+      <h1>{{ admin ? 'Order control room' : statusOnly ? 'Order status' : 'Your orders' }}</h1>
+      <p>Payment and fulfillment are tracked separately.</p>
+    </div>
+    <button type="button" class="btn ghost" [disabled]="loading()" (click)="load()">Refresh</button>
+  </div>
+  @if (error()) {
+    <p class="message error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="message success" role="status">{{ notice() }}</p>
+  }
+  @if (loading()) {
+    <p role="status">Loading…</p>
+  }
+  @if (!statusOnly) {
+    <label>
+      Fulfillment filter (loaded orders)
+      <select [(ngModel)]="filter">
+        <option value="">All statuses</option>
+        @for (status of statuses; track status) {
+          <option [value]="status">{{ label(status) }}</option>
+        }
+      </select>
+    </label>
+    <div class="order-list">
+      @for (order of visible(); track order.id) {
+        <article class="order-row">
+          <div>
+            <button type="button" (click)="select(order)">Order {{ order.id }}</button>
+            <p>{{ order.createdAt | date: 'medium' }}</p>
+            <div class="status-line">
+              <span>Fulfillment: {{ label(order.fulfillmentStatus) }}</span>
+              <span>Payment: {{ label(order.paymentStatus) }}</span>
+            </div>
+          </div>
+          <b>{{ order.totalCents / 100 | currency: order.currency }}</b>
+        </article>
+      } @empty {
+        @if (!loading() && !error()) {
+          <div class="state-panel">
+            <h2>{{ filter ? 'No loaded orders match this status' : 'No orders yet' }}</h2>
+            <p>
+              {{
+                admin
+                  ? 'Customer reservations will appear here.'
+                  : 'Your signed-in orders will appear here. Guest orders remain accessible through their private links.'
+              }}
+            </p>
+          </div>
+        }
+      }
+    </div>
+    @if (cursor) {
+      <button class="btn ghost" type="button" [disabled]="loading()" (click)="load(true)">
+        Load 25 more orders
+      </button>
+    }
+  }
+  @if (selected(); as order) {
+    <article class="order-detail">
+      <h2>Order details</h2>
+      <p class="order-reference">Reference: {{ order.id }}</p>
+      <div class="status-line">
+        <span>Fulfillment: {{ label(order.fulfillmentStatus) }}</span>
+        <span>Payment: {{ label(order.paymentStatus) }}</span>
+      </div>
+      <ul>
+        @for (line of order.lines; track line.productId + ':' + line.variantId) {
+          <li>
+            {{ line.quantity }} × {{ line.name }} {{ line.option }} —
+            {{ line.lineTotalCents / 100 | currency: order.currency }}
+          </li>
+        }
+      </ul>
+      <div class="totals">
+        <div>
+          <span>Merchandise</span>
+          <span>{{ order.subtotalCents / 100 | currency: order.currency }}</span>
+        </div>
+        <div>
+          <span>Member saving</span>
+          <span>−{{ order.discountCents / 100 | currency: order.currency }}</span>
+        </div>
+        <div>
+          <span>{{ order.delivery.label }}</span>
+          <span>{{ order.deliveryCents / 100 | currency: order.currency }}</span>
+        </div>
+        <div class="grand">
+          <span>Order total</span>
+          <span>{{ order.totalCents / 100 | currency: order.currency }}</span>
+        </div>
+      </div>
+      <p>Delivery estimate / pickup: {{ order.delivery.estimate }}</p>
+      <p>Payment method: {{ order.payment.label }}</p>
+      <p>{{ order.payment.instructions }}</p>
+      <p>
+        Payment recorded: {{ order.paidCents / 100 | currency: order.currency }} · Refunded:
+        {{ order.refundedCents / 100 | currency: order.currency }}
+      </p>
+      @if (order.reservationState === 'held') {
+        <p>
+          Reserved until {{ order.reservationExpiresAt | date: 'medium' }}. The store must confirm
+          the order or record payment before this deadline.
+        </p>
+      }
+      @if (order.fulfillmentStatus === 'expired') {
+        <p>
+          This reservation expired. Contact the store or place a new request if the pieces are
+          available.
+        </p>
+      }
+      @if (admin && order.contact; as contact) {
+        <h3>Customer and delivery</h3>
+        <p>{{ contact.fullName }} · {{ contact.phone }} · {{ contact.email }}</p>
+        <p>{{ contact.address }} · {{ contact.building }}</p>
+        <p>{{ contact.notes }}</p>
+        <form novalidate (ngSubmit)="save()">
+          <fieldset [disabled]="loading()">
+            <div class="commerce-row">
+              <label>
+                Fulfillment status
+                <select name="fulfillment" [(ngModel)]="fulfillment">
+                  @for (status of statuses; track status) {
+                    <option [value]="status">{{ label(status) }}</option>
+                  }
+                </select>
+              </label>
+              <label>
+                Total paid ({{ order.currency }})
+                <input name="paid" type="number" min="0" step="0.01" [(ngModel)]="paid" />
+              </label>
+              <label>
+                Total refunded ({{ order.currency }})
+                <input name="refunded" type="number" min="0" step="0.01" [(ngModel)]="refunded" />
+              </label>
+            </div>
+            <label>
+              Update / payment evidence note
+              <textarea
+                class="resize-none"
+                name="note"
+                maxlength="500"
+                [(ngModel)]="note"
+                placeholder="Record the reason, verified payment reference or refund reference"
+              ></textarea>
+            </label>
+            <p class="hint">
+              Amounts are cumulative. Cancellation returns stock once. Record any owed refund
+              separately; cancellation does not refund money automatically.
+            </p>
+            <button class="btn primary" type="submit">
+              {{ loading() ? 'Saving…' : 'Save order update' }}
+            </button>
+          </fieldset>
+        </form>
+      }
+    </article>
+  }
+  @if (statusOnly) {
+    <p class="hint">
+      Keep your private order link safe. Anyone with that link can view this order summary. Links
+      expire after 90 days; signed-in owners retain access through order history.
+    </p>
+  }
+</section>

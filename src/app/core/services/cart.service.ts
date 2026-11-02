@@ -19,22 +19,41 @@ export class CartService {
     this.linesState().reduce((total, line) => total + line.quantity, 0),
   );
   readonly subtotal = computed(() =>
-    this.linesState().reduce((total, line) => total + line.product.price * line.quantity, 0),
+    this.linesState().reduce((total, line) => total + this.unitPrice(line) * line.quantity, 0),
   );
 
   readonly announcement = signal('');
   private announcementTimer?: ReturnType<typeof setTimeout>;
 
-  add(product: Product, quantity = 1): void {
-    if (!product.active || product.quantity < 1 || !Number.isInteger(quantity) || quantity < 1) {
+  available(line: CartLine): number {
+    return line.variantId
+      ? (line.product.variants?.find((item) => item.id === line.variantId)?.quantity ?? 0)
+      : line.product.variants?.length
+        ? 0
+        : line.product.quantity;
+  }
+  unitPrice(line: CartLine): number {
+    return (
+      line.product.variants?.find((item) => item.id === line.variantId)?.price ?? line.product.price
+    );
+  }
+  optionLabel(line: CartLine): string {
+    const option = line.product.variants?.find((item) => item.id === line.variantId);
+    return option ? `${option.color} / ${option.size}` : 'Selection unavailable';
+  }
+  add(product: Product, quantity = 1, variantId?: string): void {
+    const available = this.available({ product, quantity, variantId });
+    if (!product.active || available < 1 || !Number.isInteger(quantity) || quantity < 1) {
       return;
     }
 
     const lines = [...this.linesState()];
-    const index = lines.findIndex((line) => line.product.id === product.id);
+    const index = lines.findIndex(
+      (line) => line.product.id === product.id && line.variantId === variantId,
+    );
 
     if (index >= 0) {
-      if (lines[index].quantity >= product.quantity) {
+      if (lines[index].quantity >= available) {
         this.announcement.set('All available stock of this piece is already in your bag.');
         clearTimeout(this.announcementTimer);
         this.announcementTimer = setTimeout(() => this.announcement.set(''), 4000);
@@ -43,12 +62,13 @@ export class CartService {
       lines[index] = {
         ...lines[index],
         product,
-        quantity: Math.min(lines[index].quantity + quantity, product.quantity),
+        quantity: Math.min(lines[index].quantity + quantity, available),
       };
     } else {
       lines.push({
         product,
-        quantity: Math.min(quantity, product.quantity),
+        variantId,
+        quantity: Math.min(quantity, available),
       });
     }
 
@@ -60,29 +80,35 @@ export class CartService {
     this.announcementTimer = setTimeout(() => this.announcement.set(''), 4000);
   }
 
-  setQuantity(productId: string, quantity: number): void {
+  setQuantity(productId: string, quantity: number, variantId?: string): void {
     if (!Number.isInteger(quantity)) return;
-    const line = this.linesState().find((item) => item.product.id === productId);
+    const line = this.linesState().find(
+      (item) => item.product.id === productId && item.variantId === variantId,
+    );
     if (!line) {
       return;
     }
 
     if (quantity <= 0) {
-      this.remove(productId);
+      this.remove(productId, variantId);
       return;
     }
 
     this.persist(
       this.linesState().map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity: Math.min(quantity, item.product.quantity) }
+        item.product.id === productId && item.variantId === variantId
+          ? { ...item, quantity: Math.min(quantity, this.available(item)) }
           : item,
       ),
     );
   }
 
-  remove(productId: string): void {
-    this.persist(this.linesState().filter((line) => line.product.id !== productId));
+  remove(productId: string, variantId?: string): void {
+    this.persist(
+      this.linesState().filter(
+        (line) => line.product.id !== productId || line.variantId !== variantId,
+      ),
+    );
   }
 
   clear(): void {
@@ -97,7 +123,10 @@ export class CartService {
         return live
           ? {
               ...line,
-              quantity: live.quantity > 0 ? Math.min(line.quantity, live.quantity) : line.quantity,
+              quantity:
+                this.available({ ...line, product: live }) > 0
+                  ? Math.min(line.quantity, this.available({ ...line, product: live }))
+                  : line.quantity,
               product: live,
             }
           : { ...line, product: { ...line.product, active: false, quantity: 0 } };

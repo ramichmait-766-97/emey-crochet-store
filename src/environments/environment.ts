@@ -1,6 +1,11 @@
 export const environment = {
   production: true,
   firestoreDatabase: 'maindb',
+  commerce: {
+    // Configure only after deploying and verifying the separate commerce Worker.
+    apiUrl: '' as string,
+    turnstileSiteKey: '' as string,
+  },
   images: {
     urlEndpoint: 'https://ik.imagekit.io/s5yr4ioi1',
     uploadWorkerUrl: 'https://emey-image-upload.rami-chmait97.workers.dev',

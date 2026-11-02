@@ -76,6 +76,17 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    match /orders/{orderId}/events/{eventId} {
+      allow read: if admin();
+      allow write: if false;
+    }
+
+    match /store_settings/checkout {
+      allow read: if true;
+      // All changes use the Worker validation/version boundary, including admin changes.
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

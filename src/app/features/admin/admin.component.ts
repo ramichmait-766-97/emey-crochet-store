@@ -35,6 +35,7 @@ export class AdminComponent implements OnInit {
   error = '';
   notice = '';
   selectedFile?: File;
+  galleryFiles: File[] = [];
   selectedPreview = '';
   draft: ProductDraft = this.emptyProduct();
   settingsDraft?: SiteSettings;
@@ -51,6 +52,7 @@ export class AdminComponent implements OnInit {
   }
 
   openNew(): void {
+    this.galleryFiles = [];
     this.draft = this.emptyProduct();
     this.selectedFile = undefined;
     this.selectedPreview = '';
@@ -59,7 +61,13 @@ export class AdminComponent implements OnInit {
   }
 
   edit(product: Product): void {
-    this.draft = { ...product, gallery: [...product.gallery], colors: [...product.colors] };
+    this.galleryFiles = [];
+    this.draft = {
+      ...product,
+      gallery: [...product.gallery],
+      colors: [...product.colors],
+      variants: (product.variants || []).map((item) => ({ ...item })),
+    };
     this.selectedFile = undefined;
     this.selectedPreview = '';
     this.showEditor = true;
@@ -97,6 +105,22 @@ export class AdminComponent implements OnInit {
       .map((item) => item.trim())
       .filter(Boolean);
   }
+  pickGallery(event: Event): void {
+    this.galleryFiles = Array.from((event.target as HTMLInputElement).files || []);
+  }
+  addVariant(): void {
+    this.draft.variants ??= [];
+    this.draft.variants.push({
+      id: crypto.randomUUID().slice(0, 8),
+      color: '',
+      size: '',
+      quantity: 0,
+      price: this.draft.price,
+    });
+  }
+  removeVariant(id: string): void {
+    this.draft.variants = this.draft.variants?.filter((item) => item.id !== id);
+  }
 
   async saveProduct(): Promise<void> {
     if (!this.draft.id.trim() || !this.draft.name.trim()) {
@@ -105,7 +129,7 @@ export class AdminComponent implements OnInit {
     }
 
     await this.runSave(async () => {
-      await this.admin.saveProduct(this.draft, this.selectedFile);
+      await this.admin.saveProduct(this.draft, this.selectedFile, this.galleryFiles);
       this.showEditor = false;
       this.notice = 'Product saved successfully.';
     });

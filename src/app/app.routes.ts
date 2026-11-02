@@ -5,6 +5,39 @@ import { guestGuard } from './core/guards/guest.guard';
 
 export const routes: Routes = [
   {
+    path: 'order/:id',
+    title: 'Order status · Emey',
+    loadComponent: () =>
+      import('./features/orders/orders.component').then((m) => m.OrdersComponent),
+  },
+  {
+    path: 'account/orders',
+    title: 'Your orders · Emey',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/orders/orders.component').then((m) => m.OrdersComponent),
+  },
+  {
+    path: 'admin/orders',
+    title: 'Order control room · Emey',
+    canActivate: [authGuard, adminGuard],
+    data: { admin: true },
+    loadComponent: () =>
+      import('./features/orders/orders.component').then((m) => m.OrdersComponent),
+  },
+  {
+    path: 'admin/settings',
+    title: 'Checkout settings · Emey',
+    canActivate: [authGuard, adminGuard],
+    canDeactivate: [
+      (component: { canLeave: () => boolean | Promise<boolean> }) => component.canLeave(),
+    ],
+    loadComponent: () =>
+      import('./features/checkout-settings/checkout-settings.component').then(
+        (m) => m.CheckoutSettingsComponent,
+      ),
+  },
+  {
     path: '',
     title: 'Emey Crochet Store · Handmade with heart',
     loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),

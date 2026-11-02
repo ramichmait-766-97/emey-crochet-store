@@ -1,6 +1,14 @@
 import { PRODUCT_CATEGORIES } from '../constants/store.constants';
 
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+export interface ProductVariant {
+  id: string;
+  color: string;
+  size: string;
+  quantity: number;
+  price: number;
+  imageUrl?: string;
+}
 
 export interface Product {
   id: string;
@@ -15,6 +23,9 @@ export interface Product {
   imageContentType?: string;
   imageData?: unknown;
   gallery: string[];
+  variants?: ProductVariant[];
+  inventoryVersion?: number;
+  reservedUnits?: number;
   colors: string[];
   bestSeller: boolean;
   newArrival: boolean;
@@ -26,4 +37,5 @@ export interface Product {
 export interface CartLine {
   product: Product;
   quantity: number;
+  variantId?: string;
 }

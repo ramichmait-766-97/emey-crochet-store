@@ -1,0 +1,8 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Product media is hosted on ImageKit through the authenticated upload Worker.
+    // No browser Storage upload/read paths are in use, including for administrators.
+    match /{path=**} { allow read, write: if false; }
+  }
+}

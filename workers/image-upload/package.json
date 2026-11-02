@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "npx wrangler@4.152.0 dev",
     "deploy": "npx wrangler@4.152.0 deploy",
-    "test": "node --test worker.test.mjs"
+    "test": "node --test worker.test.mjs commerce.test.mjs",
+    "commerce:dev": "npx wrangler@4.152.0 dev --config wrangler.commerce.jsonc",
+    "commerce:deploy": "npx wrangler@4.152.0 deploy --config wrangler.commerce.jsonc"
   },
   "dependencies": {
     "jose": "6.2.13"

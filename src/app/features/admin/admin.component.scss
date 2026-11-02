@@ -235,3 +235,21 @@ textarea {
   border-radius: 12px;
   margin-block: 1rem;
 }
+.variant-editor {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  margin-block: 12px;
+}
+.gallery-editor {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-block: 12px;
+}
+.gallery-editor img {
+  width: 70px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 8px;
+}

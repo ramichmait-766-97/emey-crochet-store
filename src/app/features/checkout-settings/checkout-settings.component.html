@@ -1,0 +1,187 @@
+<section class="shell commerce-page">
+  <nav class="commerce-nav" aria-label="Store management">
+    <a routerLink="/admin">Products and contacts</a>
+    <a routerLink="/admin/orders">Orders</a>
+    <a routerLink="/shop">View store</a>
+  </nav>
+  <div class="commerce-heading">
+    <div>
+      <span class="eyebrow">STORE OPERATIONS</span>
+      <h1>Delivery, payment & reservations</h1>
+      <p>Configure real fees and instructions before opening checkout.</p>
+    </div>
+  </div>
+  @if (error()) {
+    <p class="message error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="message success" role="status">{{ notice() }}</p>
+  }
+  @if (leavePrompt()) {
+    <section class="state-panel" role="alert" tabindex="-1">
+      <h2>Leave without saving?</h2>
+      <p>Your checkout settings have unsaved changes.</p>
+      <button type="button" class="btn ghost" (click)="decideLeave(false)">Keep editing</button>
+      <button type="button" class="btn ghost" (click)="decideLeave(true)">
+        Discard changes and leave
+      </button>
+    </section>
+  }
+  @if (loading()) {
+    <p role="status">Loading checkout settings…</p>
+  } @else if (settings(); as draft) {
+    <form
+      class="commerce-form"
+      novalidate
+      (ngSubmit)="save()"
+      (input)="dirty = true"
+      (change)="dirty = true"
+    >
+      <fieldset [disabled]="saving()">
+        <label class="check">
+          <input type="checkbox" name="enabled" [(ngModel)]="draft.enabled" />
+          Open checkout with these verified settings
+        </label>
+        <p class="hint">
+          Draft examples are disabled. Enabling an option means its name, fee, timing and
+          instructions are ready for customers.
+        </p>
+        <div class="commerce-row">
+          <label>
+            Currency (must match store currency)
+            <input name="currency" maxlength="3" [(ngModel)]="draft.currency" />
+          </label>
+          <label>
+            Reservation duration (minutes)
+            <input
+              type="number"
+              name="hold"
+              min="15"
+              max="10080"
+              step="1"
+              [(ngModel)]="draft.reservationMinutes"
+            />
+            <span class="hint">1440 minutes = 24 hours.</span>
+          </label>
+          <label>
+            Free delivery threshold (cents; blank disables)
+            <input
+              type="number"
+              name="threshold"
+              min="0"
+              step="1"
+              [(ngModel)]="draft.freeShippingThresholdCents"
+            />
+            <span class="hint">
+              Based on merchandise after member discount. 7500 = $75 when currency is USD.
+            </span>
+          </label>
+        </div>
+        <h2>Delivery zones</h2>
+        @for (zone of draft.zones; track zone.id) {
+          <div class="commerce-option">
+            <label class="check">
+              <input type="checkbox" [name]="zone.id + '-enabled'" [(ngModel)]="zone.enabled" />
+              Offer this delivery zone
+            </label>
+            <div class="commerce-row">
+              <label>
+                Area name
+                <input [name]="zone.id + '-label'" maxlength="120" [(ngModel)]="zone.label" />
+              </label>
+              <label>
+                Flat fee (cents)
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  [name]="zone.id + '-fee'"
+                  [(ngModel)]="zone.feeCents"
+                />
+                <span>{{ zone.feeCents / 100 | currency: draft.currency }}</span>
+              </label>
+              <label>
+                Estimated delivery
+                <input [name]="zone.id + '-estimate'" maxlength="120" [(ngModel)]="zone.estimate" />
+              </label>
+            </div>
+          </div>
+        }
+        <button
+          class="btn ghost"
+          type="button"
+          (click)="addZone()"
+          [disabled]="draft.zones.length >= 20"
+        >
+          Add zone
+        </button>
+        <h2>Pickup</h2>
+        <label class="check">
+          <input name="pickup" type="checkbox" [(ngModel)]="draft.pickup.enabled" />
+          Offer free pickup
+        </label>
+        <label>
+          Pickup location or confirmation instructions
+          <textarea
+            class="resize-none"
+            name="pickupDetails"
+            maxlength="300"
+            [(ngModel)]="draft.pickup.details"
+          ></textarea>
+        </label>
+        <h2>Payment methods</h2>
+        @for (method of draft.paymentMethods; track method.id) {
+          <div class="commerce-option">
+            <label class="check">
+              <input type="checkbox" [name]="method.id + '-enabled'" [(ngModel)]="method.enabled" />
+              Accept this payment method
+            </label>
+            <label>
+              Customer-facing name
+              <input [name]="method.id + '-label'" maxlength="120" [(ngModel)]="method.label" />
+            </label>
+            <label>
+              Payment instructions
+              <textarea
+                class="resize-none"
+                [name]="method.id + '-instructions'"
+                maxlength="500"
+                [(ngModel)]="method.instructions"
+              ></textarea>
+            </label>
+          </div>
+        }
+        <button
+          class="btn ghost"
+          type="button"
+          (click)="addPayment()"
+          [disabled]="draft.paymentMethods.length >= 10"
+        >
+          Add payment method
+        </button>
+        <div class="commerce-actions">
+          <button class="btn primary" type="submit">
+            {{ saving() ? 'Saving…' : 'Save checkout settings' }}
+          </button>
+          <button type="button" class="btn ghost" (click)="load()">Discard edits and reload</button>
+        </div>
+        @if (dirty) {
+          <p role="status">You have unsaved changes.</p>
+        }
+      </fieldset>
+    </form>
+  } @else if (!error()) {
+    <div class="state-panel">
+      <h2>Checkout configuration has not been created</h2>
+      <p>
+        Create disabled draft zones and payment options, then confirm the real operating details.
+      </p>
+      <button class="btn primary" [disabled]="saving()" (click)="seed()">
+        {{ saving() ? 'Creating…' : 'Create disabled draft configuration' }}
+      </button>
+    </div>
+  }
+  @if (!loading() && error()) {
+    <button type="button" class="btn ghost" (click)="load()">Reload settings</button>
+  }
+</section>

@@ -14,7 +14,26 @@
   } @else if (vm.product; as product) {
     <section class="shell detail">
       <div class="image">
-        <img [src]="product | productImage" [alt]="product.name" />
+        <img
+          [src]="selectedImage || optionImage(product) || (product | productImage)"
+          [alt]="product.name"
+        />
+        @if (product.gallery.length) {
+          <div class="gallery" aria-label="Product photos">
+            <button type="button" (click)="selectedImage = ''" [attr.aria-pressed]="!selectedImage">
+              Main photo
+            </button>
+            @for (photo of product.gallery; track photo) {
+              <button
+                type="button"
+                (click)="selectedImage = photo"
+                [attr.aria-pressed]="selectedImage === photo"
+              >
+                <img [src]="photo" [alt]="product.name + ' additional view'" loading="lazy" />
+              </button>
+            }
+          </div>
+        }
       </div>
 
       <div class="info">
@@ -29,7 +48,7 @@
         </nav>
         <span class="eyebrow">{{ product.category }}</span>
         <h1>{{ product.name }}</h1>
-        <div class="price">{{ product.price | currency: vm.site.currency }}</div>
+        <div class="price">{{ unitPrice(product) | currency: vm.site.currency }}</div>
         <p>{{ product.description }}</p>
 
         @if (product.colors.length) {
@@ -50,12 +69,24 @@
             <b>{{ product.id }}</b>
           </div>
         </div>
+        @if (product.variants?.length) {
+          <label for="product-variant">Choose color / size</label>
+          <select id="product-variant" [(ngModel)]="selectedVariant">
+            <option value="">Choose an option</option>
+            @for (variant of product.variants; track variant.id) {
+              <option [value]="variant.id" [disabled]="variant.quantity < 1">
+                {{ variant.color }} / {{ variant.size }} —
+                {{ variant.price | currency: vm.site.currency }} ({{ variant.quantity }} available)
+              </option>
+            }
+          </select>
+        }
 
         <button
           class="btn primary wide"
           type="button"
-          [disabled]="!product.quantity"
-          (click)="cart.add(product)"
+          [disabled]="!available(product)"
+          (click)="cart.add(product, 1, selectedVariant || undefined)"
         >
           Add to bag
         </button>
@@ -64,7 +95,8 @@
         <div class="member-note">
           <b>Member pricing</b>
           <span>
-            Sign in and receive {{ vm.site.memberDiscountPercent }}% off this item at checkout.
+            Sign in with a verified email to receive {{ vm.site.memberDiscountPercent }}% off this
+            item at checkout.
           </span>
         </div>
 

@@ -1,0 +1,16 @@
+{
+  "name": "emey-commerce",
+  "main": "commerce.mjs",
+  "compatibility_date": "2026-10-28",
+  "workers_dev": true,
+  "vars": {
+    "FIREBASE_PROJECT_ID": "emey-crochet-store",
+    "FIRESTORE_DATABASE": "maindb",
+    "ALLOWED_ORIGINS": "https://emey-crochet-store.web.app,https://emey-crochet-store.firebaseapp.com",
+  },
+  "ratelimits": [
+    { "name": "API_LIMITER", "namespace_id": "2047", "simple": { "limit": 30, "period": 60 } },
+  ],
+  "triggers": { "crons": ["*/10 * * * *"] },
+  "observability": { "enabled": false },
+}

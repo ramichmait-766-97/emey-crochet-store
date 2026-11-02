@@ -113,3 +113,33 @@
   text-align: center;
   text-decoration: underline;
 }
+.gallery {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.gallery button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
+  background: white;
+  color: var(--ink);
+}
+.gallery button[aria-pressed='true'] {
+  outline: 2px solid var(--brown);
+}
+.gallery img {
+  width: 65px;
+  height: 65px;
+  object-fit: cover;
+}
+select {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-block: 10px 20px;
+}

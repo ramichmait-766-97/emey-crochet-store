@@ -6,7 +6,7 @@
       <p>Members receive {{ site.memberDiscountPercent }}% off website orders.</p>
     }
 
-    <form #authForm="ngForm" (ngSubmit)="authForm.valid && submit()">
+    <form #authForm="ngForm" novalidate (ngSubmit)="authForm.valid && submit()">
       <label>
         Email
         <input type="email" name="email" [(ngModel)]="email" autocomplete="email" required />
@@ -35,7 +35,7 @@
           />
         </label>
       }
-      <button class="btn primary wide" [disabled]="busy || authForm.invalid">
+      <button type="submit" class="btn primary wide" [disabled]="busy || authForm.invalid">
         {{ busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account' }}
       </button>
     </form>

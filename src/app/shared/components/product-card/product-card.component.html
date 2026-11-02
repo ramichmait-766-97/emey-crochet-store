@@ -20,9 +20,13 @@
         <b>{{ item.price | currency: site.currency : 'symbol' : '1.2-2' }}</b>
       </div>
 
-      <button class="add" type="button" [disabled]="item.quantity < 1" (click)="cart.add(item)">
-        {{ item.quantity ? 'Add to bag' : 'Sold out' }}
-      </button>
+      @if (item.variants?.length) {
+        <a class="add" [routerLink]="['/product', item.slug]">Choose color & size</a>
+      } @else {
+        <button class="add" type="button" [disabled]="item.quantity < 1" (click)="cart.add(item)">
+          {{ item.quantity ? 'Add to bag' : 'Sold out' }}
+        </button>
+      }
     </article>
   }
 }

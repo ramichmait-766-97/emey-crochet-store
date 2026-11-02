@@ -1,7 +1,14 @@
 import { collectionData } from '../utils/firestore-streams';
 import { FirebaseService } from './firebase.service';
 import { Injectable, inject, signal } from '@angular/core';
-import { collection, deleteField, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  deleteField,
+  doc,
+  runTransaction,
+  serverTimestamp,
+  setDoc,
+} from 'firebase/firestore';
 import { Observable, catchError, map, of, shareReplay } from 'rxjs';
 import { PRODUCT_CATEGORIES } from '../constants/store.constants';
 import { Product } from '../models/product.model';
@@ -22,7 +29,7 @@ export class AdminStoreService {
 
   readonly products$ = this.createProductStream();
 
-  async saveProduct(draft: ProductDraft, file?: File): Promise<void> {
+  async saveProduct(draft: ProductDraft, file?: File, galleryFiles: File[] = []): Promise<void> {
     if (
       !draft.name.trim() ||
       !draft.description.trim() ||
@@ -42,37 +49,108 @@ export class AdminStoreService {
     const id = this.normalizeId(draft.id);
     const productRef = doc(this.firestore, `products/${id}`);
     const imagePayload = file ? await this.imageUpload.upload(file, id) : null;
+    const gallery = [...(draft.gallery || [])];
+    if (gallery.length + galleryFiles.length > 8)
+      throw new Error('Use up to eight additional photos.');
+    for (const photo of galleryFiles)
+      gallery.push((await this.imageUpload.upload(photo, id)).imageUrl);
+    if (gallery.some((url) => !url.startsWith('https://ik.imagekit.io/s5yr4ioi1/')))
+      throw new Error('Gallery images must use the store image host.');
+    const variants = (draft.variants || []).map((item) => ({
+      id: item.id,
+      color: item.color.trim(),
+      size: item.size.trim(),
+      quantity: item.quantity,
+      price: item.price,
+      ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
+    }));
+    if (
+      new Set(
+        variants.map(
+          (item) => `${item.color.trim().toLowerCase()}:${item.size.trim().toLowerCase()}`,
+        ),
+      ).size !== variants.length
+    )
+      throw new Error('Use only one option per color and size combination.');
+    if (
+      variants.some(
+        (item) =>
+          item.color.length > 80 ||
+          item.size.length > 80 ||
+          item.price > 100000 ||
+          (item.imageUrl && !item.imageUrl.startsWith('https://ik.imagekit.io/s5yr4ioi1/')),
+      )
+    )
+      throw new Error('Check option labels, prices and hosted photo mapping.');
+    if (
+      variants.length > 25 ||
+      new Set(variants.map((item) => item.id)).size !== variants.length ||
+      variants.some(
+        (item) =>
+          !/^[a-zA-Z0-9_-]{1,64}$/.test(item.id) ||
+          !item.color.trim() ||
+          !item.size.trim() ||
+          !Number.isInteger(item.quantity) ||
+          item.quantity < 0 ||
+          !Number.isFinite(item.price) ||
+          item.price <= 0 ||
+          Math.abs(Math.round(item.price * 100) / 100 - item.price) > 0.000001,
+      )
+    )
+      throw new Error(
+        'Each variant needs a unique ID, color, size, positive two-decimal price and whole available quantity.',
+      );
 
     if (!file && !draft.imageData && !draft.imageUrl) {
       throw new Error('Please choose a product image.');
     }
 
-    await setDoc(
-      productRef,
-      {
-        id,
-        slug: this.slugify(draft.slug || draft.name),
-        name: draft.name.trim(),
-        category: draft.category,
-        description: draft.description.trim(),
-        colors: draft.colors ?? [],
-        gallery: [],
-        price: Number(draft.price),
-        quantity: Math.max(0, Math.floor(Number(draft.quantity))),
-        bestSeller: !!draft.bestSeller,
-        newArrival: !!draft.newArrival,
-        active: !!draft.active,
-        createdAt: draft.createdAt ?? serverTimestamp(),
-        modifiedAt: serverTimestamp(),
-        ...(imagePayload
-          ? {
-              ...imagePayload,
-              imageData: deleteField(),
-            }
-          : {}),
-      },
-      { merge: true },
-    );
+    await runTransaction(this.firestore, async (transaction) => {
+      const current = (await transaction.get(productRef)).data();
+      if ((current?.['inventoryVersion'] || 0) !== (draft.inventoryVersion || 0))
+        throw new Error('Stock changed while editing. Reopen this product before saving.');
+      const oldMatrix = (current?.['variants'] || []).map(
+        (item: { id: string; color: string; size: string }) => [item.id, item.color, item.size],
+      );
+      if (
+        current?.['reservedUnits'] > 0 &&
+        JSON.stringify(oldMatrix) !==
+          JSON.stringify(variants.map((item) => [item.id, item.color, item.size]))
+      )
+        throw new Error(
+          'Existing orders reserve these options. Keep the variant IDs, colors and sizes until those orders close.',
+        );
+      transaction.set(
+        productRef,
+        {
+          id,
+          slug: this.slugify(draft.slug || draft.name),
+          name: draft.name.trim(),
+          category: draft.category,
+          description: draft.description.trim(),
+          colors: draft.colors ?? [],
+          gallery,
+          variants,
+          inventoryVersion: (current?.['inventoryVersion'] || 0) + 1,
+          price: Number(draft.price),
+          quantity: variants.length
+            ? variants.reduce((total, item) => total + item.quantity, 0)
+            : Math.max(0, Math.floor(Number(draft.quantity))),
+          bestSeller: !!draft.bestSeller,
+          newArrival: !!draft.newArrival,
+          active: !!draft.active,
+          createdAt: draft.createdAt ?? serverTimestamp(),
+          modifiedAt: serverTimestamp(),
+          ...(imagePayload
+            ? {
+                ...imagePayload,
+                imageData: deleteField(),
+              }
+            : {}),
+        },
+        { merge: true },
+      );
+    });
   }
 
   async saveSettings(settings: SiteSettings): Promise<void> {
@@ -130,6 +208,7 @@ export class AdminStoreService {
     if (!normalized) {
       throw new Error('Product ID is required.');
     }
+    if (normalized.length > 128) throw new Error('Product ID must be at most 128 characters.');
     return normalized;
   }
 

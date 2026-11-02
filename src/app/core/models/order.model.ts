@@ -3,6 +3,7 @@ export interface CheckoutContact {
   email: string;
   phone: string;
   address?: string;
+  building?: string;
   notes?: string;
 }
 

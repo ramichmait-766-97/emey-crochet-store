@@ -1,185 +1,317 @@
 @if (settings.settings$ | async; as site) {
-  <section class="shell cart-page">
+  <section class="shell cart-page commerce-page">
     <div>
       <span class="eyebrow">YOUR BAG</span>
       <h1>Your selected pieces</h1>
-
-      @if (cart.lines().length) {
-        <div class="lines">
-          @for (line of cart.lines(); track line.product.id) {
-            <div class="line">
-              <img [src]="line.product | productImage" [alt]="line.product.name" />
-              <div class="grow">
-                <a [routerLink]="['/product', line.product.slug]">
-                  <b>{{ line.product.name }}</b>
-                </a>
-                @if (!line.product.active || !line.product.quantity) {
-                  <span class="error">This piece is currently unavailable. Please remove it.</span>
-                }
-                <span>{{ line.product.price | currency: site.currency }} each</span>
-                <div class="qty" aria-label="Quantity controls">
-                  <button
-                    type="button"
-                    (click)="cart.setQuantity(line.product.id, line.quantity - 1)"
-                    aria-label="Decrease quantity"
-                  >
-                    −
-                  </button>
-                  <span>{{ line.quantity }}</span>
-                  <button
-                    type="button"
-                    (click)="cart.setQuantity(line.product.id, line.quantity + 1)"
-                    [disabled]="line.quantity >= line.product.quantity || !line.product.active"
-                    aria-label="Increase quantity"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-              <button class="remove" type="button" (click)="cart.remove(line.product.id)">
-                Remove
-              </button>
-            </div>
-          }
-        </div>
-      } @else {
+      @if (result; as order) {
         <div class="state-panel">
-          <h2>Your bag is waiting for a little joy.</h2>
-          <p>Discover something handmade, just for you.</p>
-          <a class="btn primary" routerLink="/shop">Explore the collection</a>
-        </div>
-      }
-    </div>
-
-    <aside>
-      @if (auth.firebaseUser$ | async) {
-        <div class="discount success-tone">
-          ✓ Signed in — your
-          <b>{{ site.memberDiscountPercent }}% member discount</b>
-          is verified at checkout.
-        </div>
-      } @else {
-        <div class="discount">
-          Sign in before checkout to receive
-          <b>{{ site.memberDiscountPercent }}% off</b>
-          .
-        </div>
-      }
-
-      <div class="total">
-        <span>Subtotal</span>
-        <b>{{ cart.subtotal() | currency: site.currency }}</b>
-      </div>
-
-      <form #requestForm="ngForm" (ngSubmit)="requestForm.valid && checkout()">
-        <fieldset [disabled]="busy || filling">
-          <h3>Request your pieces</h3>
-          <p class="hint">
-            Send your selection to the store on WhatsApp. We will confirm availability, delivery and
-            payment before you commit.
+          <h2>Your order is recorded</h2>
+          <p class="order-reference">Order {{ order.id }}</p>
+          <p>
+            Fulfillment: {{ order.fulfillmentStatus.replaceAll('_', ' ') }}. Payment:
+            {{ order.paymentStatus.replaceAll('_', ' ') }}.
+            @if (order.reservationState === 'held') {
+              Reserved until {{ order.reservationExpiresAt | date: 'medium' }}.
+            }
           </p>
-          @if (auth.firebaseUser$ | async) {
-            <button
-              class="btn ghost"
-              type="button"
-              [disabled]="filling || busy"
-              (click)="useProfile()"
-            >
-              {{ filling ? 'Loading details…' : 'Use saved billing details for delivery' }}
-            </button>
-          }
-          <label>
-            Full name
-            <input
-              name="fullName"
-              required
-              maxlength="120"
-              [(ngModel)]="contact.fullName"
-              autocomplete="name"
-            />
-          </label>
-          <label>
-            Email
-            <input
-              type="email"
-              name="email"
-              maxlength="200"
-              [(ngModel)]="contact.email"
-              autocomplete="email"
-            />
-          </label>
-          <label>
-            Phone / WhatsApp
-            <input
-              name="phone"
-              type="tel"
-              required
-              maxlength="40"
-              [(ngModel)]="contact.phone"
-              autocomplete="tel"
-            />
-          </label>
-          <label>
-            Delivery address
-            <textarea
-              name="address"
-              maxlength="500"
-              [(ngModel)]="contact.address"
-              autocomplete="street-address"
-            ></textarea>
-          </label>
-          <label>
-            Order notes
-            <textarea
-              name="notes"
-              maxlength="1000"
-              [(ngModel)]="contact.notes"
-              placeholder="Optional"
-            ></textarea>
-          </label>
-
-          <button
-            class="btn primary wide"
-            type="submit"
-            [disabled]="
-              busy ||
-              filling ||
-              requestForm.invalid ||
-              !cart.lines().length ||
-              !contact.fullName.trim() ||
-              !contact.phone.trim()
-            "
-          >
-            {{ busy ? 'Checking availability…' : 'Prepare WhatsApp request' }}
-          </button>
-        </fieldset>
-      </form>
-      @if (error) {
-        <div class="message error">{{ error }}</div>
-      }
-      @if (result && requestMatches) {
-        <div class="message success">
-          Your request is ready to send.
-          <br />
-          Subtotal: {{ result.subtotal | currency: result.currency }}
-          @if (result.discount) {
-            <br />
-            Member saving: {{ result.discount | currency: result.currency }}
-          }
-          <br />
-          Estimated total:
-          <b>{{ result.total | currency: result.currency }}</b>
-          <p class="hint">
-            Delivery and payment are confirmed by the store. Your bag stays saved until you remove
-            its items.
+          <p>
+            <a class="btn primary" [href]="statusUrl" rel="noreferrer">
+              Open and save your private order link
+            </a>
           </p>
-          @if (whatsappUrl !== '#') {
-            <br />
-            <a [href]="whatsappUrl" target="_blank" rel="noopener noreferrer">
-              Send request on WhatsApp →
+          <p class="hint">
+            Anyone with this link can view the order summary. Keep it private; it expires after 90
+            days.
+          </p>
+          @if (whatsappUrl) {
+            <a class="btn ghost" [href]="whatsappUrl" target="_blank" rel="noopener noreferrer">
+              Discuss this order on WhatsApp
             </a>
           }
+          <p>
+            The store will confirm the request and payment. WhatsApp text does not change your
+            recorded order.
+          </p>
         </div>
+      } @else {
+        @for (line of cart.lines(); track line.product.id + ':' + line.variantId) {
+          <div class="line">
+            <img [src]="line.product | productImage" [alt]="line.product.name" />
+            <div class="grow">
+              <a [routerLink]="['/product', line.product.slug]">
+                <b>{{ line.product.name }}</b>
+              </a>
+              @if (line.variantId) {
+                <span>Option: {{ cart.optionLabel(line) }}</span>
+              }
+              <span>{{ cart.unitPrice(line) | currency: site.currency }} each</span>
+              @if (!line.product.active || !cart.available(line)) {
+                <span class="error">This selection is unavailable. Please review it.</span>
+              }
+              <div class="qty" aria-label="Quantity controls">
+                <button
+                  type="button"
+                  [disabled]="busy || pending"
+                  (click)="cart.setQuantity(line.product.id, line.quantity - 1, line.variantId)"
+                  aria-label="Decrease quantity"
+                >
+                  −
+                </button>
+                <span>{{ line.quantity }}</span>
+                <button
+                  type="button"
+                  [disabled]="busy || pending || line.quantity >= cart.available(line)"
+                  (click)="cart.setQuantity(line.product.id, line.quantity + 1, line.variantId)"
+                  aria-label="Increase quantity"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="remove"
+              [disabled]="busy || pending"
+              (click)="cart.remove(line.product.id, line.variantId)"
+            >
+              Remove
+            </button>
+          </div>
+        } @empty {
+          @if (!pending) {
+            <div class="state-panel">
+              <h2>Your bag is waiting for a little joy.</h2>
+              <a class="btn primary" routerLink="/shop">Explore the collection</a>
+            </div>
+          }
+        }
+      }
+    </div>
+    <aside>
+      <p id="checkout-error" class="message error" role="alert" [hidden]="!error">{{ error }}</p>
+      @if (configLoading) {
+        <p role="status">Loading delivery options…</p>
+      } @else if (pending) {
+        <h2>Recover your reservation</h2>
+        <p>
+          A checkout was submitted from this browser session. Check its status or retry it using the
+          same reservation key.
+        </p>
+        <button class="btn primary" type="button" [disabled]="busy" (click)="recover()">
+          Check reservation status
+        </button>
+        @if (!busy) {
+          <app-checkout-challenge (completed)="challenge = $event" (failed)="error = $event" />
+        }
+        <button class="btn ghost" type="button" [disabled]="busy || !challenge" (click)="reserve()">
+          Retry same reservation
+        </button>
+        <p>
+          <button class="remove" type="button" (click)="resetRecovery = true">
+            Need to start over?
+          </button>
+        </p>
+        @if (resetRecovery) {
+          <p role="alert">
+            An existing order may still hold stock. Save its private link or contact the store
+            before clearing recovery.
+          </p>
+          <button type="button" class="btn ghost" (click)="clearRecovery()">
+            Clear recovery anyway
+          </button>
+          <button type="button" class="btn ghost" (click)="resetRecovery = false">
+            Keep recovery
+          </button>
+        }
+      } @else if (result; as order) {
+        <h2>Recorded total</h2>
+        <div class="totals">
+          <div>
+            <span>Merchandise</span>
+            <b>{{ order.subtotalCents / 100 | currency: order.currency }}</b>
+          </div>
+          <div>
+            <span>Member saving</span>
+            <span>−{{ order.discountCents / 100 | currency: order.currency }}</span>
+          </div>
+          <div>
+            <span>Delivery</span>
+            <span>{{ order.deliveryCents / 100 | currency: order.currency }}</span>
+          </div>
+          <div class="grand">
+            <span>Total</span>
+            <span>{{ order.totalCents / 100 | currency: order.currency }}</span>
+          </div>
+        </div>
+        <p>{{ order.payment.label }}: {{ order.payment.instructions }}</p>
+      } @else if (!api.configured || !config?.enabled) {
+        <div class="state-panel">
+          <h2>Online reservations are not open yet</h2>
+          <p>
+            Please use the store contact links while delivery and payment options are being
+            confirmed.
+          </p>
+          <button type="button" class="btn ghost" (click)="load()">
+            Retry checkout availability
+          </button>
+        </div>
+      } @else {
+        <p class="discount">
+          Guest checkout is welcome. Verified-email members receive the store discount, checked
+          securely when reviewing the total.
+        </p>
+        <form #checkoutForm="ngForm" novalidate (ngSubmit)="review()">
+          <fieldset [disabled]="busy || filling">
+            <h2>Delivery details</h2>
+            @if (auth.firebaseUser$ | async) {
+              <button class="btn ghost" type="button" (click)="useProfile()">
+                {{ filling ? 'Loading…' : 'Use saved details' }}
+              </button>
+            }
+            <label>
+              Full name
+              <input
+                name="fullName"
+                required
+                maxlength="120"
+                [(ngModel)]="contact.fullName"
+                autocomplete="name"
+                aria-describedby="checkout-error"
+              />
+            </label>
+            <label>
+              Phone / WhatsApp
+              <input
+                name="phone"
+                type="tel"
+                required
+                maxlength="40"
+                [(ngModel)]="contact.phone"
+                autocomplete="tel"
+                aria-describedby="checkout-error"
+              />
+            </label>
+            <label>
+              Email (optional)
+              <input
+                name="email"
+                type="email"
+                email
+                maxlength="200"
+                [(ngModel)]="contact.email"
+                autocomplete="email"
+                aria-describedby="checkout-error"
+              />
+            </label>
+            <label>
+              Delivery or pickup
+              <select name="delivery" required [(ngModel)]="deliveryId">
+                <option value="">Choose an option</option>
+                @for (zone of config!.zones; track zone.id) {
+                  @if (zone.enabled) {
+                    <option [value]="zone.id">
+                      {{ zone.label }} — {{ zone.feeCents / 100 | currency: config!.currency }}
+                    </option>
+                  }
+                }
+                @if (config!.pickup.enabled) {
+                  <option value="pickup">Free pickup</option>
+                }
+              </select>
+            </label>
+            @if (deliveryId !== 'pickup') {
+              <label>
+                Street address
+                <input
+                  name="address"
+                  required
+                  maxlength="500"
+                  [(ngModel)]="contact.address"
+                  autocomplete="address-line1"
+                />
+              </label>
+              <label>
+                Apartment / building
+                <input
+                  name="building"
+                  required
+                  maxlength="120"
+                  [(ngModel)]="contact.building"
+                  autocomplete="address-line2"
+                />
+              </label>
+            } @else {
+              <p>{{ config!.pickup.details }}</p>
+            }
+            <label>
+              Delivery notes (optional)
+              <textarea
+                class="resize-none"
+                name="notes"
+                maxlength="1000"
+                [(ngModel)]="contact.notes"
+              ></textarea>
+            </label>
+            <label>
+              Payment method
+              <select name="payment" required [(ngModel)]="paymentId">
+                <option value="">Choose a method</option>
+                @for (method of config!.paymentMethods; track method.id) {
+                  @if (method.enabled) {
+                    <option [value]="method.id">{{ method.label }}</option>
+                  }
+                }
+              </select>
+            </label>
+            <button
+              class="btn primary wide"
+              type="submit"
+              [disabled]="checkoutForm.invalid || !cart.lines().length || busy"
+            >
+              {{ busy ? 'Checking total…' : 'Review final total' }}
+            </button>
+          </fieldset>
+        </form>
+        @if (quote && quoteMatches) {
+          <div class="totals" aria-live="polite">
+            <div>
+              <span>Merchandise</span>
+              <span>{{ quote.subtotalCents / 100 | currency: quote.currency }}</span>
+            </div>
+            <div>
+              <span>Member saving</span>
+              <span>−{{ quote.discountCents / 100 | currency: quote.currency }}</span>
+            </div>
+            <div>
+              <span>{{ quote.delivery.label }}</span>
+              <span>{{ quote.deliveryCents / 100 | currency: quote.currency }}</span>
+            </div>
+            <div class="grand">
+              <span>Final total</span>
+              <span>{{ quote.totalCents / 100 | currency: quote.currency }}</span>
+            </div>
+          </div>
+          <p>Delivery / pickup: {{ quote.delivery.estimate }}</p>
+          <p>{{ quote.payment.label }}: {{ quote.payment.instructions }}</p>
+          <p class="hint">
+            Reserve for {{ quote.reservationMinutes / 60 }} hours. Your order is recorded before
+            WhatsApp opens. Stock is released if the store has not confirmed or recorded payment
+            before expiry.
+          </p>
+          @if (!busy) {
+            <app-checkout-challenge (completed)="challenge = $event" (failed)="error = $event" />
+          }
+          <button
+            class="btn primary wide"
+            type="button"
+            [disabled]="busy || !challenge"
+            (click)="reserve()"
+          >
+            {{ busy ? 'Reserving…' : 'Reserve pieces & create order' }}
+          </button>
+        } @else if (quote) {
+          <p role="status">Your details changed. Review the final total again.</p>
+        }
       }
     </aside>
   </section>

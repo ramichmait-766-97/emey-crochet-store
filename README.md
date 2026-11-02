@@ -53,9 +53,15 @@ Avoid the legacy `firebase:deploy` command: it also deploys Functions and requir
   against the migrated catalog; it refuses writes once hosted images are present.
 - Local product WebP files remain necessary for homepage artwork and recovery.
 - The cart keeps slim local data and reconciles current prices/stock. Checkout
-  prepares a WhatsApp request; the customer sends it and the store manually confirms
-  availability, delivery, and payment. No payment collection, stock reservation,
-  automated notification delivery, or confirmed order is created by this flow.
+  now reviews server totals, reserves stock transactionally and records an order
+  before an optional WhatsApp conversation. This local implementation is **not yet
+  deployed/configured**: it fails closed until the commerce Worker, secrets,
+  Turnstile, indexes and verified operating settings are ready. The existing live
+  site's behavior has not been changed. See [COMMERCE.md](COMMERCE.md) for business
+  requirements, journeys, schema, limits, tests and deployment instructions.
+- `/admin/settings` manages delivery/payment/holds; `/admin/orders` manages the
+  payment and fulfillment ledger. `/account/orders` and private guest status links
+  provide customer visibility. No automated payment/refund or messaging exists.
 - Profiles and notification preferences are stored in `users/{uid}`. Role claims,
   profile ownership, and customer write restrictions are enforced by Firestore rules.
 
