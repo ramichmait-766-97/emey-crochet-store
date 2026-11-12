@@ -209,7 +209,7 @@ Schema-v2 orders hold immutable price/contact/delivery/payment snapshots, hashed
 **C) Capability matrix:**
 
 - [✅ VERIFIED COMPLETED] Local Worker tests pass for authoritative cents/variants, idempotency, simulated stock races, expiry/release once, transition/version constraints, guest/member isolation, signed tokens, challenge checks, body/rate limits, settings and REST retry/write mapping. These use controlled dependencies, not deployed IAM or real contention.
-- [🟡 IN PROGRESS] Reservation/recovery/admin/order/settings implementation exists but browser commerce URL and Turnstile sitekey are empty. Runtime IAM/secrets, real challenges, deployed rules/index readiness, cron and recovery require integration QA.
+- [🟡 IN PROGRESS] Commerce Worker deployment and secret uploads are supported by user terminal evidence; live CORS/missing-token checks passed independently. User confirms maindb indexes enabled and rules published. Source browser commerce URL and public Turnstile sitekey are now configured; Hosting deployment is pending. Real IAM transactions, challenges, cron execution and recovery still require integration QA.
 - [🟡 IN PROGRESS] Validate free-plan transaction/subrequest/latency/backlog operating limits, especially large carts and retries. Commerce observability is disabled in Wrangler configuration; no verified alert/reconciliation process exists.
 - [🔴 NOT STARTED] Stripe/PayPal payment creation/UI, signed webhook endpoints, event deduplication, automated refunds and provider reconciliation.
 - [🟡 IN PROGRESS] Legacy Functions `createOrder` exists but is not wired into current checkout. It lacks v2 idempotency/reservation/variant/payment contracts and interleaves reads/writes across cart items. Do not activate it as the modern backend.
@@ -232,4 +232,141 @@ Schema-v2 orders hold immutable price/contact/delivery/payment snapshots, hashed
 ### Cloudflare/ImageKit audit — [🟡 IN PROGRESS]
 
 - [✅ VERIFIED COMPLETED] Upload Worker tests cover signed admin access, Origin/preflight, magic/size validation, no-store, hosted URL checks and redacted upstream errors.
-- [🟡 IN PROGRESS] Hosted gallery/variant/admin/bag/card requests now use the configured-accoun                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+- [🟡 IN PROGRESS] Hosted gallery/variant/admin/bag/card requests now use the configured-account responsive transformer. Local home rasters are deliberate pass-throughs. Controlled network fixtures prove URL selection/geometry, not actual ImageKit/CDN responses; live formats/cache/bytes still need inspection. Preserve local assets and never rerun legacy seeds against migrated catalog.
+- [🔴 NOT STARTED] Repository-managed storefront Cloudflare DNS/proxy/CDN cache-rule configuration not found. Account-side state is unknown, not proven absent. Worker deployment does not prove Hosting traffic traverses Cloudflare.
+- [🟡 IN PROGRESS] Hosting gives JS/CSS/woff2 one-year immutable caching and rasters/SVG revalidation; verify unhashed assets cannot become stale. Worker source returns no-store/Vary: Origin; no Cache API implementation found. No verified cache-hit claims can be made.
+- DoD: capture actual HTML/hashed asset/ImageKit headers, cache status, width/format/content types and cold/warm regional latency. Verify transformations/format variants remain distinct in cache keys and private POST/order/Auth responses never enter shared cache. Confirm current account usage/limits without plan changes. Redact credentials/access capabilities from evidence.
+
+### Read-only baseline verification on 2026-11-02
+
+- Frontend `tsc -p tsconfig.app.json --noEmit`: PASS, exit 0.
+- Root regression tests: PASS, 19/19.
+- Worker tests: PASS, 24/24 (18 commerce + 6 upload).
+- Supported bundled Node used per project guide. Local tests exercise source/fakes; no seed/migration script executed.
+- No fresh production build, browser visual review, emulator rules test, performance trace, external query, credential inspection, live mutation, deployment, commit or push. Historical guide build/browser results remain historical.
+- Existing staged application work preserved. Only SPEC.md and the required external memory entry were authored for this task.
+
+### Runtime-contract/cart implementation verification on 2026-11-02
+
+- Frontend strict no-emit typecheck and production Angular build: PASS. Current
+  build reports 900.76 kB initial raw / 241.78 kB estimated transfer; these are
+  bundle estimates, not paint/interaction measurements.
+- Root regressions: PASS, 31/31. Worker regressions: PASS, 24/24. Cart tests use
+  real Angular TestBed Signals/effects and check teardown, limits, migration,
+  scoped ownership, stock/price reconciliation and blocked storage. Contract tests
+  reject malformed nested payloads and exercise real API/snapshot decode boundaries
+  plus checkout account-switch protection.
+- Changed-file Prettier check and Git whitespace check: PASS. Repository-wide
+  formatting was not claimed; the guide records pre-existing unrelated failures.
+- Headless Edge, 390px: empty/saved/corrupt/blocked-storage cart, removal/reload
+  passed with zero page exceptions or horizontal overflow. External requests were
+  blocked; no live catalog/Auth/checkout integration was exercised.
+- Routing paths, layout/styles, server reservation code and Firestore schema were
+  preserved. No deployment, seed/migration against Firebase, credential access,
+  commit or push occurred. Local v2-to-v3 browser-cart migration is separate from
+  product database migration. Remote member-cart sync, pagination and live commerce
+  readiness remain outstanding; the full phases are not marked complete.
+
+### Responsive media/view implementation verification on 2026-11-02
+
+- Strict frontend no-emit and production Angular build passed; 35 root + 24 Worker
+  tests passed (59 total). Image pipeline tests cover query/transform replacement,
+  approved endpoint, local/data/external pass-through, parameter limits, srcset
+  parsing, LQIP and bounded fallback. No new package dependency was added.
+- Production build reports 911.83 kB raw / 247.18 kB estimated initial transfer.
+  This is larger than the previous runtime-contract build; do not claim an initial
+  JavaScript reduction. Cards and gallery are separately emitted lazy chunks.
+- An ignored local fixture app uses the real components/router and fake catalog/
+  Auth/settings providers. Headless Edge measured CLS 0 for tested image/defer
+  journeys at 320/390/768/1280px, DPR 1/2, plus home/detail/fallback cases. Off-screen
+  placeholders retain exact card geometry and instantiate only when visible.
+  The 390px/DPR2 card chose w-400; the 768px/DPR2 card chose w-600. Gallery and card
+  chunks were absent before their viewport triggers. Forced chunk failure recovered
+  through Reload catalog; forced image failure removed srcset and preserved shape.
+- External requests were blocked/fulfilled with local image fixtures, and fonts
+  used fallbacks: these are controlled browser results, not real CDN byte/format,
+  live catalog/cardinality, font-swap, field CLS or global latency certification.
+  Artifacts/results are under ignored `.artifacts/media-*`.
+- DESIGN.md lint: zero errors, four existing orphan-token warnings. Strict generic
+  UI audit reports 50 actionless-button findings; Angular-aware inspection found a
+  `(click)`/form handler for each. Raw audit was not called a clean pass. Repo-wide
+  formatting still reports 14 pre-existing unrelated files; touched media files
+  are formatted. Cart state/payment logic, route paths and Workers are unchanged.
+- No credentials, production writes, plan changes, media uploads, deployment,
+  product migration/seed, commit or push. Five local home WebPs remain unchanged.
+
+### Bounded catalog implementation verification on 2026-11-02
+
+- Strict no-emit and warning-free production Angular build: PASS. Root regressions
+  43/43 and Worker regressions 24/24 passed (67 total). Initial build is 920.33 kB
+  raw / 248.95 kB estimated transfer; no new package dependency or performance claim.
+- Real ProductService code with a controlled Firestore adapter verifies tied
+  names/prices/revisions in both directions, reset and stale-response suppression,
+  bounded reads, rejected-row cursor progress, deleted cursor snapshots, duplicate
+  merge, append failure/retry, version-field prerequisites and listener teardown.
+  Every public index combination is checked against the JSON configuration.
+- Actual shop controller/template with a fixture paging provider passed headless
+  Edge at 390px and 1280px: 12/24/36/38 loaded rows, disabled busy button, failure
+  retention/retry, category reset, price sort, prefix search, no results/clear,
+  zero page exceptions or horizontal overflow. External requests were blocked or
+  fulfilled locally. Evidence is ignored under `.artifacts/catalog-*`; this is not
+  a live Firebase/emulator or production-index verification.
+- Index configuration now contains 37 product and three preserved order composites,
+  with six preserved field exemptions. None were deployed. Missing-index errors
+  are handled without unbounded fallbacks. CATALOG.md documents exact physical
+  fields, supported predicates, freshness/mutation/search limits and rollout steps.
+- Touched files and whitespace checks pass. COMMERCE.md was formatted while its
+  index instructions were updated; other historical repository formatter failures
+  remain. Generic UI audit reports 52 actionless-button flags, all with Angular
+  click/form actions on inspection; no clean generic-audit pass is claimed.
+- No application-state seed, product migration, credential access, database write,
+  plan change, Hosting/Worker/index deployment, commit or push. ImageKit source,
+  payment mechanics and router paths were not changed. Cart's necessary read
+  integration now watches its IDs rather than treating a browse page as complete.
+
+### Production evidence and rollout prerequisites
+
+User terminal evidence confirms commerce Worker deployment, three secret uploads and maindb index/rule deployment; user confirms index readiness and service-account/widget creation. Live CORS and missing-token rejection independently passed. Public browser configuration is now present in source; updated Hosting deployment and real transaction/challenge/cron verification remain pending.
+
+Before opening checkout: deploy updated Hosting; verify actual IAM/secret functionality; test actual Auth/atomicity/challenge/expiry/recovery; confirm delivery/payment operating terms in disabled drafts; explicitly open checkout. Normal VM runner deploys Hosting/rules, not indexes or Workers. Follow COMMERCE.md with VM-local dependencies/profile credentials while editing this checkout. Avoid legacy Functions-inclusive deployment/paid activation. This documentation task authorizes no rollout.
+
+### Ordered completion plan
+
+1. Finish runtime contracts, Auth/profile recovery, security/integration evidence, IAM/configuration, business policies and expiry operating limits for existing commerce.
+2. Bounded catalog/admin paging and direct detail/cart reads are implemented locally; deploy/verify their maindb indexes and catalog coverage. Member remote cart sync/merge/owner rules remain outstanding.
+3. Responsive ImageKit/LQIP, media geometry and viewport @defer are implemented locally. Finish live CDN/field verification, font stability, measured budgets and CI performance gates.
+4. Incrementally align directory/presentational boundaries while preserving identity/routes; avoid speculative layers or wholesale rewrites.
+5. Add payment/webhook providers only in a separately authorized phase after resolving free-plan feasibility.
+
+A whole flow earns [✅ VERIFIED COMPLETED] at the premium baseline only after implemented state/model/security contracts, relevant automated checks, responsive accessible UI review, measured performance and required live integration evidence all pass. Local regressions alone cannot promote a complete pillar.
+
+### Edge security hooks — 2026-11-02 local verification
+
+Checkout now uses an ephemeral X-Turnstile-Token header and advertised CORS header;
+missing token returns401, invalid challenge403. Canonical Siteverify validates
+HTTP status, strict success boolean, hostname and checkout action with a timeout.
+Malformed JSON roots/checkout selections/contact/key/fingerprint fail before the
+Firestore factory; failed verification cannot dispatch database requests. Existing
+IP limiter, JWT authorization, atomic stock/idempotency/expiry logic preserved.
+All API replies include restrictive JSON CSP and no-store; Hosting CSP is still
+pending. Separate upload/commerce configs and existing TURNSTILE_SECRET secret
+handle preserved; real hosting origins used, no placeholder fallback or dev bypass.
+See COMMERCE.md for scope and approximate per-location limiter limits. Full checkout
+pillar remains IN PROGRESS until live configuration and integration QA pass.
+
+### Admin dashboard and responsive editor — local implementation, 2026-11-02
+
+New guarded /admin/dashboard summarizes existing authenticated order pages with
+currency/date-filtered order value, net recorded payments, pending confirmation,
+outstanding balances, daily chart/table, fulfillment distribution and recent orders.
+Scope is explicit: loaded recent pages25, capped250; no store-wide/visitor revenue
+claims or new Firestore scans. Admin Home/logo/default sign-in target dashboard;
+clients retain storefront Home. Existing /admin and transaction paths preserved.
+Shared admin navigation spans management screens. Native modal product add/edit
+uses viewport scrolling, focus trapping/restoration, dirty-route/close confirmation,
+busy protection and inline failure recovery. Mobile product rows retain status;
+loaded-product search/filter/clear and refresh added. Checkout settings reuse the
+shared modal for their existing unsaved-navigation confirmation. Cash on delivery
+unchanged; Stripe/PayPal and webhook integration remain future work.
+These UI changes are local until the next Hosting rollout, independent of the
+previously deployed commerce Worker and owner-reported successful settings creation.

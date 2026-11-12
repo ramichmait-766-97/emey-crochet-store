@@ -1,14 +1,15 @@
 import { CurrencyPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { CheckoutSettings } from '../../core/models/commerce.model';
 import { decodeSettingsResponse } from '../../types/commerce.contracts';
 import { CommerceService } from '../../core/services/commerce.service';
+import { AdminNavComponent } from '../../shared/components/admin-nav.component';
+import { AppDialogComponent } from '../../shared/components/app-dialog.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, RouterLink, CurrencyPipe],
+  imports: [FormsModule, CurrencyPipe, AdminNavComponent, AppDialogComponent],
   templateUrl: './checkout-settings.component.html',
   styleUrl: '../commerce.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

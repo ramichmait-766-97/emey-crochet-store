@@ -7,13 +7,14 @@
 | Select/Listbox | Native select + FormsModule                  | This contract     | OS popup                           | Template compilation + browser smoke |
 | Form           | Angular template forms + Worker validation   | COMMERCE.md       | Review, save, reserve              | Worker tests + template compilation  |
 | Scrollbar      | Global stylesheet                            | DESIGN.md         | Document scrolling                 | Narrow viewport smoke                |
+| Dialog         | AppDialogComponent (native dialog)           | This contract     | Editor, discard confirmation       | Keyboard + responsive browser smoke  |
 | Toast          | Inline message live regions                  | Global stylesheet | Alert, status                      | Template compilation + browser smoke |
 | CRUD           | CommerceService + existing AdminStoreService | COMMERCE.md       | Versioned save, refresh, load more | Worker tests + browser smoke         |
 
 - Select/Listbox: native HTML select, Angular FormsModule; OS popup geometry accepted.
 - Date: DatePipe read-only display; no new date picker in this release.
 - Form: Angular template forms, `CommerceService` and Worker schema validation.
-- Scrollbar: document scrolling via `src/styles.scss`; no nested fixed-height panels.
+- Scrollbar: document scrolling via `src/styles.scss`; modal dialogs and chart data tables own bounded internal scrolling.
 - Toast: existing inline `.message` blocks, alert/status live regions; no toast library.
 - CRUD: route links and `CommerceService`; product editing retains AdminStoreService.
 - Table Selection: not applicable; single order detail selection only.
@@ -105,3 +106,40 @@ Worker tests exercise calculation, stock races, expiry, retry, access isolation,
 payment transitions and authorization. Build/typecheck compile the real templates.
 Browser smoke tests are separate from live integration verification; do not infer
 real IAM, indexes, Turnstile or cron health from local unit tests.
+
+## Admin workspace and analytics
+
+- /admin/dashboard is the guarded overview; /admin remains product/store editing.
+  Admin login defaults and header Home/brand go to the overview. Client/guest Home
+  continues to /. Shared AdminNavComponent owns navigation across overview,
+  products, orders and checkout settings; View storefront always remains available.
+- AppDialogComponent is the canonical native top-layer modal: inert background,
+  Escape/Close requests, heading focus, explicit opener focus restoration, nested
+  scroll-lock accounting and a single internal dialog scroller. Product editors
+  never enter the product list layout at any viewport. Backdrop clicks do not
+  discard work. During save, fields/closing are disabled; failures retain the draft
+  and focus its inline error. Route/unload and closing dirty products are protected;
+  product and store-setting route changes require a discard decision. Checkout
+  settings use the same dialog primitive for their existing dirty-route prompt.
+- Product search and visibility are transient filters on loaded products only,
+  labelled accordingly, with clear and refresh. They are intentionally not URL
+  state because they cannot query or reproduce a full catalog search. Load-more
+  retains the existing bounded25 query. Mobile rows retain price, stock and status.
+- Overview uses existing authenticated /admin/orders pages25 at a time, max250
+  recent rows, without new collection scans, indexes or analytics dependencies.
+  Date filters14/30/90 operate on loaded order creation dates in browser-local
+  calendar days; currencies are never summed together. Daily value excludes
+  cancelled/expired orders; net payments subtract refunds from recorded payments,
+  including cancelled records. Payments grouped by order date are not cash flow.
+  Metrics are not store-wide totals or visitor/conversion analytics. Old records
+  outside the schemaVersion2 ledger are not included by the existing endpoint.
+  Load/error/empty, retained-data retry and refresh are explicit; a table exposes
+  exact chart figures without pointer hover. Loading more history is manual.
+- Cash on delivery remains operational; PayPal/card processors and authenticated,
+  idempotent webhooks remain a future separately reviewed integration. Never mark
+  a reservation or WhatsApp click as a successful online payment.
+
+Overview date/currency choices are session-local projections over the manually
+loaded order window. They do not claim to create shareable, exhaustive reports;
+refresh intentionally rebuilds the latest page. Analytics windows and filters never
+change ledger state or mark an order paid.

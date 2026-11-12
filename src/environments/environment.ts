@@ -2,9 +2,9 @@ export const environment = {
   production: true,
   firestoreDatabase: 'maindb',
   commerce: {
-    // Configure only after deploying and verifying the separate commerce Worker.
-    apiUrl: '' as string,
-    turnstileSiteKey: '' as string,
+    // Public connection settings; private credentials remain Worker secrets.
+    apiUrl: 'https://emey-commerce.rami-chmait97.workers.dev' as string,
+    turnstileSiteKey: '0x4AAAAAAFpeooshSFRdGaCY' as string,
   },
   images: {
     urlEndpoint: 'https://ik.imagekit.io/s5yr4ioi1',

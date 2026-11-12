@@ -5,6 +5,15 @@ import { guestGuard } from './core/guards/guest.guard';
 
 export const routes: Routes = [
   {
+    path: 'admin/dashboard',
+    title: 'Store overview · Emey',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./features/admin-dashboard/admin-dashboard.component').then(
+        (m) => m.AdminDashboardComponent,
+      ),
+  },
+  {
     path: 'order/:id',
     title: 'Order status · Emey',
     loadComponent: () =>
@@ -77,6 +86,9 @@ export const routes: Routes = [
     path: 'admin',
     title: 'Store Management · Emey Crochet Store',
     canActivate: [authGuard, adminGuard],
+    canDeactivate: [
+      (component: { canLeave: () => boolean | Promise<boolean> }) => component.canLeave(),
+    ],
     loadComponent: () => import('./features/admin/admin.component').then((m) => m.AdminComponent),
   },
   {

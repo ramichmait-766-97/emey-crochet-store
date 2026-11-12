@@ -163,7 +163,7 @@ Quota monitoring and abuse alerts remain launch responsibilities.
    upgrade Firebase. Do not deploy Functions or change plans.
 5. Set `environment.commerce.apiUrl` to the verified Worker URL and
    `turnstileSiteKey` to its public key; build and deploy Hosting through the normal
-   source-checkout workflow. Both default to empty, so checkout fails closed until
+   source-checkout workflow. Both are now configured in source as of 2026-11-02; checkout must remain closed until
    real backend configuration is ready. Existing hosted store remains unchanged
    until you deploy this source.
 6. Sign in as admin → `/admin/settings` → Create disabled draft configuration →

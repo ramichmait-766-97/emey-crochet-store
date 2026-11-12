@@ -1,25 +1,21 @@
 <section class="shell admin">
+  <app-admin-nav />
   <div class="title">
     <div>
       <span class="eyebrow">ADMIN</span>
       <h1>Store management</h1>
     </div>
     @if (tab === 'products') {
-      <button class="btn primary" type="button" (click)="openNew()">+ New product</button>
+      <button #newProductButton class="btn primary" type="button" (click)="openNew()">
+        + New product
+      </button>
     }
   </div>
 
-  <nav class="admin-links" aria-label="Store shortcuts">
-    <a routerLink="/admin/orders">Order control room →</a>
-    <a routerLink="/admin/settings">Delivery and checkout →</a>
-    <a routerLink="/shop">View storefront →</a>
-    <a routerLink="/account">Your profile →</a>
-  </nav>
-  <div class="tabs" role="tablist">
+  <div class="tabs" aria-label="Management section">
     <button
       type="button"
-      role="tab"
-      [attr.aria-selected]="tab === 'products'"
+      [attr.aria-pressed]="tab === 'products'"
       [class.active]="tab === 'products'"
       (click)="tab = 'products'"
     >
@@ -27,8 +23,7 @@
     </button>
     <button
       type="button"
-      role="tab"
-      [attr.aria-selected]="tab === 'settings'"
+      [attr.aria-pressed]="tab === 'settings'"
       [class.active]="tab === 'settings'"
       (click)="tab = 'settings'"
     >
@@ -39,14 +34,60 @@
   @if (admin.loadError()) {
     <p class="message error" role="alert">{{ admin.loadError() }}</p>
   }
-  @if (error) {
-    <div class="message error">{{ error }}</div>
+  @if (error && !showEditor) {
+    <div class="message error" role="alert">{{ error }}</div>
   }
   @if (notice) {
-    <div class="message success">{{ notice }}</div>
+    <div class="message success" role="status">{{ notice }}</div>
   }
 
   @if (tab === 'products') {
+    <div class="product-tools">
+      <label>
+        Find in loaded products
+        <div class="search-control">
+          <input
+            #productSearchInput
+            type="search"
+            [(ngModel)]="productSearch"
+            placeholder="Name, ID or collection"
+          />
+          @if (productSearch) {
+            <button
+              type="button"
+              class="btn ghost"
+              aria-label="Clear product search"
+              (click)="productSearch = ''; productSearchInput.focus()"
+            >
+              Clear
+            </button>
+          }
+        </div>
+      </label>
+      <label>
+        Visibility
+        <select [(ngModel)]="productStatus">
+          <option value="">All products</option>
+          <option value="active">Active</option>
+          <option value="hidden">Hidden</option>
+        </select>
+      </label>
+      <button
+        class="btn ghost"
+        type="button"
+        [disabled]="admin.loadingProducts()"
+        (click)="admin.loadProducts(true)"
+      >
+        Refresh products
+      </button>
+    </div>
+    <p class="hint" role="status">
+      Showing {{ visibleProducts().length }} of {{ admin.products().length }} loaded products. Load
+      more to search older pages.
+    </p>
+    @if (admin.loadingProducts()) {
+      <p role="status">Loading products…</p>
+    }
     <div class="layout">
       <div class="table">
         <div class="thead">
@@ -55,7 +96,7 @@
           <span>Stock</span>
           <span>Status</span>
         </div>
-        @for (product of admin.products(); track product.id) {
+        @for (product of visibleProducts(); track product.id) {
           <button class="row" type="button" (click)="edit(product)">
             <span class="prod">
               <img
@@ -71,10 +112,20 @@
               />
               <b>{{ product.name }}</b>
             </span>
-            <span>{{ product.price | currency: settingsDraft?.currency || 'USD' }}</span>
-            <span>{{ product.quantity }}</span>
-            <span>{{ product.active ? 'Active' : 'Hidden' }}</span>
+            <span class="product-price">
+              {{ product.price | currency: settingsDraft?.currency || 'USD' }}
+            </span>
+            <span class="product-stock">
+              {{ product.quantity }}
+              <small>available</small>
+            </span>
+            <span class="product-status">{{ product.active ? 'Active' : 'Hidden' }}</span>
           </button>
+        }
+        @if (!admin.loadingProducts() && admin.products().length && !visibleProducts().length) {
+          <p class="hint empty-result">
+            No matches in the loaded products. Clear the filters or load more products.
+          </p>
         }
         @if (admin.rejectedProducts()) {
           <p class="hint" role="status">Some malformed product records could not be displayed.</p>
@@ -101,164 +152,232 @@
       </div>
 
       @if (showEditor) {
-        <aside>
-          <div class="editor-head">
-            <h2>{{ draft.createdAt ? 'Edit product' : 'New product' }}</h2>
-            <button type="button" aria-label="Close product editor" (click)="closeEditor()">
-              ×
-            </button>
-          </div>
-          <label>
-            ID
-            <input [(ngModel)]="draft.id" [disabled]="!!draft.createdAt" />
-          </label>
-          <label>
-            Name
-            <input [(ngModel)]="draft.name" />
-          </label>
-          <label>
-            Slug
-            <input [(ngModel)]="draft.slug" placeholder="Auto-generated from name if empty" />
-          </label>
-          <label>
-            Category
-            <select [(ngModel)]="draft.category">
-              @for (category of categories; track category) {
-                <option [value]="category">{{ category }}</option>
-              }
-            </select>
-          </label>
-          <label>
-            Description
-            <textarea class="resize-none" [(ngModel)]="draft.description"></textarea>
-          </label>
-          <label>
-            Colors
-            <input
-              [ngModel]="draft.colors.join(', ')"
-              (ngModelChange)="colorsChanged($event)"
-              placeholder="Cream, Rose, Olive"
-            />
-          </label>
-          <div class="two">
-            <label>
-              Price
-              <input type="number" min="0" step="0.01" [(ngModel)]="draft.price" />
-            </label>
-            <label>
-              Quantity
-              <input type="number" min="0" step="1" [(ngModel)]="draft.quantity" />
-            </label>
-          </div>
-          <div class="checks">
-            <label>
-              <input type="checkbox" [(ngModel)]="draft.bestSeller" />
-              Best seller
-            </label>
-            <label>
-              <input type="checkbox" [(ngModel)]="draft.newArrival" />
-              New arrival
-            </label>
-            <label>
-              <input type="checkbox" [(ngModel)]="draft.active" />
-              Active
-            </label>
-          </div>
-          <h3>Color / size inventory</h3>
-          <p class="hint">
-            Variant quantities are available stock, excluding reserved units. Once options exist,
-            customers must choose one. Keep IDs stable while orders are open.
-          </p>
-          @for (variant of draft.variants || []; track variant.id) {
-            <div class="variant-editor">
+        <app-dialog
+          [title]="draft.createdAt ? 'Edit product' : 'New product'"
+          [busy]="saving"
+          [fallbackFocus]="newProductButton?.nativeElement ?? null"
+          (closeRequested)="closeEditor()"
+        >
+          @if (error) {
+            <p
+              #editorError
+              id="product-editor-error"
+              class="message error"
+              role="alert"
+              tabindex="-1"
+            >
+              {{ error }}
+            </p>
+          }
+          <form ngNoForm novalidate (submit)="$event.preventDefault(); saveProduct()">
+            <fieldset class="editor-fields" [disabled]="saving">
+              <p class="hint">
+                Update photos, pricing and available stock. Changes appear in the store after
+                saving.
+              </p>
+              <h3>Product details</h3>
               <label>
-                Color
-                <input [(ngModel)]="variant.color" maxlength="80" />
+                ID
+                <input
+                  [(ngModel)]="draft.id"
+                  required
+                  [disabled]="!!draft.createdAt"
+                  [attr.aria-invalid]="error && !draft.id.trim() ? 'true' : null"
+                  [attr.aria-describedby]="error ? 'product-editor-error' : null"
+                />
               </label>
               <label>
-                Size / measurement
-                <input [(ngModel)]="variant.size" maxlength="80" />
+                Name
+                <input
+                  [(ngModel)]="draft.name"
+                  required
+                  [attr.aria-invalid]="error && !draft.name.trim() ? 'true' : null"
+                  [attr.aria-describedby]="error ? 'product-editor-error' : null"
+                />
               </label>
               <label>
-                Option photo
-                <select [(ngModel)]="variant.imageUrl">
-                  <option [ngValue]="undefined">Main product photo</option>
-                  @for (photo of draft.gallery; track photo) {
-                    <option [value]="photo">Gallery photo {{ $index + 1 }}</option>
+                Slug
+                <input [(ngModel)]="draft.slug" placeholder="Auto-generated from name if empty" />
+              </label>
+              <label>
+                Category
+                <select [(ngModel)]="draft.category">
+                  @for (category of categories; track category) {
+                    <option [value]="category">{{ category }}</option>
                   }
                 </select>
+              </label>
+              <label>
+                Description
+                <textarea
+                  class="resize-none"
+                  [(ngModel)]="draft.description"
+                  required
+                  [attr.aria-invalid]="error && !draft.description.trim() ? 'true' : null"
+                  [attr.aria-describedby]="error ? 'product-editor-error' : null"
+                ></textarea>
+              </label>
+              <label>
+                Colors
+                <input
+                  [ngModel]="draft.colors.join(', ')"
+                  (ngModelChange)="colorsChanged($event)"
+                  placeholder="Cream, Rose, Olive"
+                />
               </label>
               <div class="two">
                 <label>
                   Price
-                  <input type="number" min="0.01" step="0.01" [(ngModel)]="variant.price" />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [(ngModel)]="draft.price"
+                    required
+                    [attr.aria-invalid]="
+                      error && (draft.price === null || draft.price < 0) ? 'true' : null
+                    "
+                    [attr.aria-describedby]="error ? 'product-editor-error' : null"
+                  />
                 </label>
                 <label>
-                  Available quantity
-                  <input type="number" min="0" step="1" [(ngModel)]="variant.quantity" />
+                  Quantity
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    [(ngModel)]="draft.quantity"
+                    required
+                    [attr.aria-invalid]="
+                      error &&
+                      (draft.quantity === null || draft.quantity < 0 || draft.quantity % 1 !== 0)
+                        ? 'true'
+                        : null
+                    "
+                    [attr.aria-describedby]="error ? 'product-editor-error' : null"
+                  />
                 </label>
               </div>
-              <button type="button" class="btn ghost" (click)="removeVariant(variant.id)">
-                Remove option
+              <div class="checks">
+                <label>
+                  <input type="checkbox" [(ngModel)]="draft.bestSeller" />
+                  Best seller
+                </label>
+                <label>
+                  <input type="checkbox" [(ngModel)]="draft.newArrival" />
+                  New arrival
+                </label>
+                <label>
+                  <input type="checkbox" [(ngModel)]="draft.active" />
+                  Active
+                </label>
+              </div>
+              <h3>Color / size inventory</h3>
+              <p class="hint">
+                Variant quantities are available stock, excluding reserved units. Once options
+                exist, customers must choose one. Keep IDs stable while orders are open.
+              </p>
+              @for (variant of draft.variants || []; track variant.id) {
+                <div class="variant-editor">
+                  <label>
+                    Color
+                    <input [(ngModel)]="variant.color" maxlength="80" />
+                  </label>
+                  <label>
+                    Size / measurement
+                    <input [(ngModel)]="variant.size" maxlength="80" />
+                  </label>
+                  <label>
+                    Option photo
+                    <select [(ngModel)]="variant.imageUrl">
+                      <option [ngValue]="undefined">Main product photo</option>
+                      @for (photo of draft.gallery; track photo) {
+                        <option [value]="photo">Gallery photo {{ $index + 1 }}</option>
+                      }
+                    </select>
+                  </label>
+                  <div class="two">
+                    <label>
+                      Price
+                      <input type="number" min="0.01" step="0.01" [(ngModel)]="variant.price" />
+                    </label>
+                    <label>
+                      Available quantity
+                      <input type="number" min="0" step="1" [(ngModel)]="variant.quantity" />
+                    </label>
+                  </div>
+                  <button type="button" class="btn ghost" (click)="removeVariant(variant.id)">
+                    Remove option
+                  </button>
+                </div>
+              }
+              <button
+                type="button"
+                class="btn ghost"
+                (click)="addVariant()"
+                [disabled]="(draft.variants?.length || 0) >= 25"
+              >
+                Add color / size option
               </button>
-            </div>
-          }
-          <button
-            type="button"
-            class="btn ghost"
-            (click)="addVariant()"
-            [disabled]="(draft.variants?.length || 0) >= 25"
-          >
-            Add color / size option
-          </button>
-          <h3>Additional photos</h3>
-          @for (photo of draft.gallery; track photo) {
-            <div class="gallery-editor">
-              <img
-                [src]="photo | imagekit: { width: 160 }"
-                [attr.srcset]="photo | imagekitSrcset: [80, 160, 240]"
-                sizes="70px"
-                width="70"
-                height="70"
-                [appImageFallback]="photo"
-                alt="Additional product photo"
-                loading="lazy"
-                decoding="async"
-              />
-              <button type="button" class="btn ghost" (click)="draft.gallery.splice($index, 1)">
-                Remove photo
+              <h3>Additional photos</h3>
+              @for (photo of draft.gallery; track photo) {
+                <div class="gallery-editor">
+                  <img
+                    [src]="photo | imagekit: { width: 160 }"
+                    [attr.srcset]="photo | imagekitSrcset: [80, 160, 240]"
+                    sizes="70px"
+                    width="70"
+                    height="70"
+                    [appImageFallback]="photo"
+                    alt="Additional product photo"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <button type="button" class="btn ghost" (click)="draft.gallery.splice($index, 1)">
+                    Remove photo
+                  </button>
+                </div>
+              }
+              <label>
+                Add gallery photos (up to eight total)
+                <input
+                  type="file"
+                  multiple
+                  accept="image/webp,image/jpeg,image/png"
+                  (change)="pickGallery($event)"
+                />
+              </label>
+              @if (galleryFiles.length) {
+                <p>{{ galleryFiles.length }} additional photos selected</p>
+              }
+              <label>
+                Product image (WebP, JPG or PNG, up to 5 MB)
+                <input
+                  type="file"
+                  accept="image/webp,image/jpeg,image/png"
+                  (change)="pickFile($event)"
+                />
+              </label>
+              @if (selectedPreview || draft.imageUrl) {
+                <img
+                  class="editor-preview"
+                  [src]="selectedPreview || draft.imageUrl | imagekit: { width: 640 }"
+                  [attr.srcset]="
+                    selectedPreview || draft.imageUrl | imagekitSrcset: [320, 640, 960]
+                  "
+                  sizes="280px"
+                  [appImageFallback]="selectedPreview || draft.imageUrl"
+                  width="400"
+                  height="400"
+                  alt="Product image preview"
+                />
+              }
+              <button class="btn primary wide" type="submit" [disabled]="saving">
+                {{ saving ? 'Saving…' : 'Save product' }}
               </button>
-            </div>
-          }
-          <label>
-            Add gallery photos (up to eight total)
-            <input
-              type="file"
-              multiple
-              accept="image/webp,image/jpeg,image/png"
-              (change)="pickGallery($event)"
-            />
-          </label>
-          @if (galleryFiles.length) {
-            <p>{{ galleryFiles.length }} additional photos selected</p>
-          }
-          <label>
-            Product image (WebP, JPG or PNG, up to 5 MB)
-            <input
-              type="file"
-              accept="image/webp,image/jpeg,image/png"
-              (change)="pickFile($event)"
-            />
-          </label>
-          <button
-            class="btn primary wide"
-            type="button"
-            [disabled]="saving"
-            (click)="saveProduct()"
-          >
-            {{ saving ? 'Saving…' : 'Save product' }}
-          </button>
-        </aside>
+            </fieldset>
+          </form>
+        </app-dialog>
       }
     </div>
   } @else {
@@ -288,16 +407,16 @@
         </div>
         @for (contact of settings.contacts; track contact.id) {
           <div class="contact-row">
-            <select [(ngModel)]="contact.type">
+            <select [(ngModel)]="contact.type" aria-label="Contact type">
               <option value="whatsapp">WhatsApp</option>
               <option value="phone">Phone</option>
               <option value="instagram">Instagram</option>
               <option value="email">Email</option>
               <option value="custom">Custom</option>
             </select>
-            <input [(ngModel)]="contact.label" placeholder="Label" />
-            <input [(ngModel)]="contact.value" placeholder="Value" />
-            <input [(ngModel)]="contact.url" placeholder="URL" />
+            <input [(ngModel)]="contact.label" placeholder="Label" aria-label="Contact label" />
+            <input [(ngModel)]="contact.value" placeholder="Value" aria-label="Contact value" />
+            <input [(ngModel)]="contact.url" placeholder="URL" aria-label="Contact URL" />
             <label class="enabled">
               <input type="checkbox" [(ngModel)]="contact.enabled" />
               Enabled
@@ -314,3 +433,12 @@
     }
   }
 </section>
+@if (discardPrompt) {
+  <app-dialog title="Discard unsaved changes?" (closeRequested)="decideDiscard(false)">
+    <p>Your unsaved changes will be lost.</p>
+    <div class="dialog-actions">
+      <button class="btn primary" type="button" (click)="decideDiscard(false)">Keep editing</button>
+      <button class="btn ghost" type="button" (click)="decideDiscard(true)">Discard changes</button>
+    </div>
+  </app-dialog>
+}

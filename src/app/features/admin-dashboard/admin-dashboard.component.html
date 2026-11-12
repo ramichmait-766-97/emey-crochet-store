@@ -1,0 +1,238 @@
+<section class="shell dashboard">
+  <app-admin-nav />
+  <header class="page-heading">
+    <div>
+      <span class="eyebrow">EMEY · STORE OVERVIEW</span>
+      <h1>
+        Your store,
+        <br />
+        at a glance.
+      </h1>
+      <p>Orders, recorded payments and the work that needs your attention.</p>
+    </div>
+    <button class="btn ghost" type="button" [disabled]="loading()" (click)="load()">
+      Refresh overview
+    </button>
+  </header>
+  <div class="workspace-actions">
+    <a routerLink="/admin" class="btn primary">Manage products</a>
+    <a routerLink="/admin/orders" class="btn ghost">Manage orders →</a>
+    <a routerLink="/admin/settings" class="btn ghost">Delivery & payment</a>
+  </div>
+  <div class="scope-panel">
+    <div>
+      <strong>Recent-order snapshot</strong>
+      <p>
+        {{ orders().length }} orders loaded{{ hasMore() ? '; more history is available' : '' }}.
+        Charts cover loaded orders only, not your entire store.
+      </p>
+      @if (loadedAt()) {
+        <small>Last refreshed {{ loadedAt() | date: 'short' }}</small>
+      }
+    </div>
+    <div class="filters">
+      <label>
+        Order date range
+        <select [ngModel]="days()" (ngModelChange)="days.set(+$event)">
+          <option [ngValue]="14">Last 14 days</option>
+          <option [ngValue]="30">Last 30 days</option>
+          <option [ngValue]="90">Last 90 days</option>
+        </select>
+      </label>
+      <label>
+        Currency
+        <select [ngModel]="currency()" (ngModelChange)="currency.set($event)">
+          @for (code of currencies(); track code) {
+            <option [value]="code">{{ code }}</option>
+          } @empty {
+            <option value="USD">USD</option>
+          }
+        </select>
+      </label>
+    </div>
+  </div>
+  @if (error()) {
+    <div class="state error" role="alert">
+      <p>{{ error() }}</p>
+      <button class="btn ghost" type="button" [disabled]="loading()" (click)="retry()">
+        Retry loading orders
+      </button>
+    </div>
+  }
+  @if (loading()) {
+    <p class="loading" role="status">Loading order overview…</p>
+  }
+  @if (!loadedAt() && loading()) {
+    <div class="metrics" aria-hidden="true">
+      @for (item of [1, 2, 3, 4]; track item) {
+        <div class="metric skeleton"></div>
+      }
+    </div>
+  } @else if (loadedAt()) {
+    @if (!orders().length) {
+      <div class="state">
+        <h2>Your first order starts the story.</h2>
+        <p>Once customers reserve a piece, its order and payment activity will appear here.</p>
+        <a routerLink="/admin/settings" class="btn ghost">Review checkout settings</a>
+      </div>
+    }
+    <div class="metrics">
+      <article class="metric">
+        <span>Order value</span>
+        <strong>{{ analysis().orderValueCents / 100 | currency: currency() }}</strong>
+        <small>{{ analysis().activeCount }} orders · excludes cancelled / expired</small>
+      </article>
+      <article class="metric">
+        <span>Recorded net payments</span>
+        <strong>{{ analysis().netPaymentsCents / 100 | currency: currency() }}</strong>
+        <small>Recorded payments minus refunds</small>
+      </article>
+      <article class="metric">
+        <span>Awaiting confirmation</span>
+        <strong>{{ analysis().awaitingCount }}</strong>
+        <small>Requested or awaiting confirmation</small>
+      </article>
+      <article class="metric">
+        <span>Outstanding balance</span>
+        <strong>{{ analysis().outstandingCents / 100 | currency: currency() }}</strong>
+        <small>On orders not cancelled or expired</small>
+      </article>
+    </div>
+    <div class="insight-grid">
+      <article class="panel trend">
+        <div class="panel-heading">
+          <div>
+            <span class="eyebrow">ORDER ACTIVITY</span>
+            <h2>Daily order value</h2>
+          </div>
+          <span class="period">{{ days() }} days</span>
+        </div>
+        <p>
+          Order value by creation date, excluding cancelled and expired orders. This is not
+          collected revenue.
+        </p>
+        <div
+          class="chart"
+          role="img"
+          [attr.aria-label]="
+            'Daily order value chart for ' +
+            days() +
+            ' days. Exact values are available in the table below.'
+          "
+        >
+          @for (bucket of analysis().buckets; track bucket.date) {
+            <div class="bar-column">
+              <span
+                class="bar"
+                [style.height.%]="(bucket.valueCents / analysis().maxBucket) * 100"
+                [attr.title]="
+                  (bucket.date | date: 'mediumDate') +
+                  ': ' +
+                  (bucket.valueCents / 100 | currency: currency())
+                "
+              ></span>
+            </div>
+          }
+        </div>
+        <div class="axis">
+          <span>{{ analysis().firstDate | date: 'MMM d' }}</span>
+          <span>{{ loadedAt() | date: 'MMM d' }}</span>
+        </div>
+        <div class="chart-summary">
+          <span>
+            Average active order
+            <strong>{{ analysis().averageCents / 100 | currency: currency() }}</strong>
+          </span>
+          <span>
+            Recorded refunds
+            <strong>{{ analysis().refundedCents / 100 | currency: currency() }}</strong>
+          </span>
+        </div>
+        @if (!analysis().activeCount) {
+          <p>No active orders in this date range among the loaded orders.</p>
+        }
+        <details>
+          <summary>View daily figures</summary>
+          <div class="data-scroll">
+            <table>
+              <caption>Loaded active orders by date · {{ currency() }}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Orders</th>
+                  <th scope="col">Order value</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (bucket of analysis().buckets; track bucket.date) {
+                  <tr>
+                    <th scope="row">{{ bucket.date | date: 'mediumDate' }}</th>
+                    <td>{{ bucket.count }}</td>
+                    <td>{{ bucket.valueCents / 100 | currency: currency() }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </article>
+      <article class="panel">
+        <span class="eyebrow">FULFILLMENT</span>
+        <h2>Fulfillment progress</h2>
+        <p>{{ analysis().count }} loaded orders in the selected currency and date range.</p>
+        @for (item of analysis().statuses; track item.status) {
+          <div class="status-row">
+            <div>
+              <span>{{ label(item.status) }}</span>
+              <strong>{{ item.count }}</strong>
+            </div>
+            <meter
+              min="0"
+              [max]="analysis().count || 1"
+              [value]="item.count"
+              [attr.aria-label]="label(item.status)"
+            ></meter>
+          </div>
+        }
+        <a routerLink="/admin/orders" class="text-link">Open order control room →</a>
+      </article>
+    </div>
+    <div class="panel recent">
+      <div class="panel-heading">
+        <div>
+          <span class="eyebrow">LATEST LOADED ORDERS · {{ currency() }}</span>
+          <h2>Recent orders</h2>
+        </div>
+        <a routerLink="/admin/orders" class="text-link">View orders →</a>
+      </div>
+      @for (order of recent(); track order.id) {
+        <div class="recent-row">
+          <div>
+            <strong>Order {{ order.id }}</strong>
+            <small>{{ order.createdAt | date: 'mediumDate' }}</small>
+          </div>
+          <span>{{ label(order.fulfillmentStatus) }}</span>
+          <strong>{{ order.totalCents / 100 | currency: order.currency }}</strong>
+        </div>
+      } @empty {
+        <p>No orders to show yet.</p>
+      }
+    </div>
+    <div class="history-actions">
+      @if (hasMore() && orders().length < limit) {
+        <button class="btn ghost" type="button" [disabled]="loading()" (click)="load(true)">
+          Include 25 older orders
+        </button>
+      }
+      @if (hasMore() && orders().length >= limit) {
+        <p>
+          Overview is limited to {{ limit }} recent orders. Use order management for older records.
+        </p>
+      }
+      <p>
+        Cash on delivery is tracked when payment is recorded. PayPal and card processing are not
+        connected.
+      </p>
+    </div>
+  }
+</section>

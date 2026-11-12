@@ -1,9 +1,9 @@
 <section class="shell commerce-page">
+  @if (admin) {
+    <app-admin-nav />
+  }
   <nav class="commerce-nav" aria-label="Order navigation">
-    @if (admin) {
-      <a routerLink="/admin">Products and contacts</a>
-      <a routerLink="/admin/settings">Checkout settings</a>
-    } @else {
+    @if (!admin) {
       <a routerLink="/shop">Continue shopping</a>
       <a routerLink="/account">Your account</a>
     }

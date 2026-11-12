@@ -15,7 +15,7 @@ new Function('exports', compiled)(exports);
 const { loginDestination } = exports;
 
 test('admin and client have separate default destinations', () => {
-  assert.equal(loginDestination('admin', null), '/admin');
+  assert.equal(loginDestination('admin', null), '/admin/dashboard');
   assert.equal(loginDestination('user', null), '/account');
 });
 test('preserves a local shopping return URL for either role', () => {
@@ -38,6 +38,6 @@ test('rejects external redirects, backslashes, control characters and login loop
     '/login?returnUrl=/login',
   ]) {
     assert.equal(loginDestination('user', path), '/account');
-    assert.equal(loginDestination('admin', path), '/admin');
+    assert.equal(loginDestination('admin', path), '/admin/dashboard');
   }
 });

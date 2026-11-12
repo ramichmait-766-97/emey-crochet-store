@@ -1,9 +1,5 @@
 <section class="shell commerce-page">
-  <nav class="commerce-nav" aria-label="Store management">
-    <a routerLink="/admin">Products and contacts</a>
-    <a routerLink="/admin/orders">Orders</a>
-    <a routerLink="/shop">View store</a>
-  </nav>
+  <app-admin-nav />
   <div class="commerce-heading">
     <div>
       <span class="eyebrow">STORE OPERATIONS</span>
@@ -18,14 +14,13 @@
     <p class="message success" role="status">{{ notice() }}</p>
   }
   @if (leavePrompt()) {
-    <section class="state-panel" role="alert" tabindex="-1">
-      <h2>Leave without saving?</h2>
+    <app-dialog title="Leave without saving?" (closeRequested)="decideLeave(false)">
       <p>Your checkout settings have unsaved changes.</p>
       <button type="button" class="btn ghost" (click)="decideLeave(false)">Keep editing</button>
       <button type="button" class="btn ghost" (click)="decideLeave(true)">
         Discard changes and leave
       </button>
-    </section>
+    </app-dialog>
   }
   @if (loading()) {
     <p role="status">Loading checkout settings…</p>

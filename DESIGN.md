@@ -100,3 +100,18 @@ Order details show the immutable item/price/delivery snapshot. Payment and
 fulfillment labels never rely on color. No drag interaction is required.
 Settings navigation prompts before discarding unsaved changes. See UX-CONTRACT.md
 for data recovery and security behavior.
+
+## Admin workspace direction
+
+The overview keeps the warm paper/brown ink palette and existing typography.
+A single dark order-value panel anchors otherwise quiet white metric panels;
+compact brown daily bars and fulfilment meters communicate actual loaded ledger
+activity. Headings name operations plainly; avoid fabricated traffic, revenue or
+percentage trends. The data scope stays beside date/currency controls.
+
+AdminNavComponent owns responsive, wrapping route navigation. AppDialogComponent
+owns product editing and discard confirmations with a native top-layer dialog,
+cream surface, 20px radius (14px on phones), sticky title/Close header, bounded
+viewport height and internal scrolling. It consumes existing global tokens and
+focus styles; no overlay library or new font is introduced. See UX-CONTRACT.md
+for focus, busy, recovery, loaded-data and role-navigation contracts.

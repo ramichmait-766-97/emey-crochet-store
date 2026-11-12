@@ -5,10 +5,11 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommerceService } from '../../core/services/commerce.service';
 import { LedgerOrder, OrderPage } from '../../core/models/commerce.model';
 import { decodeOrderResponse, decodeOrderPage } from '../../types/commerce.contracts';
+import { AdminNavComponent } from '../../shared/components/admin-nav.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, RouterLink, CurrencyPipe, DatePipe],
+  imports: [FormsModule, RouterLink, CurrencyPipe, DatePipe, AdminNavComponent],
   templateUrl: './orders.component.html',
   styleUrl: '../commerce.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

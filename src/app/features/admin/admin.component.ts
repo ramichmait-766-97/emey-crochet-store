@@ -4,9 +4,11 @@ import {
   ChangeDetectorRef,
   Component,
   OnInit,
+  HostListener,
+  ViewChild,
+  ElementRef,
   inject,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { PRODUCT_CATEGORIES } from '../../core/constants/store.constants';
@@ -17,16 +19,19 @@ import { SiteSettingsService } from '../../core/services/site-settings.service';
 import { productImageSrc } from '../../core/utils/product-image';
 import { ImageKitPipe, ImageKitSrcsetPipe } from '../../shared/pipes/imagekit.pipe';
 import { ImageFallbackDirective } from '../../shared/directives/image-fallback.directive';
+import { AdminNavComponent } from '../../shared/components/admin-nav.component';
+import { AppDialogComponent } from '../../shared/components/app-dialog.component';
 
 @Component({
   standalone: true,
   imports: [
     CurrencyPipe,
     FormsModule,
-    RouterLink,
     ImageKitPipe,
     ImageKitSrcsetPipe,
     ImageFallbackDirective,
+    AdminNavComponent,
+    AppDialogComponent,
   ],
   templateUrl: './admin.component.html',
   styleUrl: './admin.component.scss',
@@ -43,11 +48,68 @@ export class AdminComponent implements OnInit {
   saving = false;
   error = '';
   notice = '';
+  productSearch = '';
+  productStatus = '';
   selectedFile?: File;
   galleryFiles: File[] = [];
   selectedPreview = '';
   draft: ProductDraft = this.emptyProduct();
   settingsDraft?: SiteSettings;
+  @ViewChild('newProductButton') newProductButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild('editorError') set editorError(element: ElementRef<HTMLElement> | undefined) {
+    element?.nativeElement.focus();
+  }
+  visibleProducts(): Product[] {
+    const query = this.productSearch.trim().toLocaleLowerCase();
+    return this.admin
+      .products()
+      .filter(
+        (product) =>
+          (!query ||
+            `${product.name} ${product.id} ${product.category}`
+              .toLocaleLowerCase()
+              .includes(query)) &&
+          (!this.productStatus || product.active === (this.productStatus === 'active')),
+      );
+  }
+  discardPrompt = false;
+  private originalDraft = '';
+  private originalSettings = '';
+  private leaveDecision?: (leave: boolean) => void;
+
+  get productDirty(): boolean {
+    return (
+      this.showEditor &&
+      (JSON.stringify(this.draft) !== this.originalDraft ||
+        !!this.selectedFile ||
+        this.galleryFiles.length > 0)
+    );
+  }
+  get settingsDirty(): boolean {
+    return !!this.settingsDraft && JSON.stringify(this.settingsDraft) !== this.originalSettings;
+  }
+  @HostListener('window:beforeunload', ['$event'])
+  beforeUnload(event: BeforeUnloadEvent): void {
+    if (this.productDirty || this.settingsDirty || this.saving) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  }
+  canLeave(): boolean | Promise<boolean> {
+    if (this.saving) return false;
+    if (!this.productDirty && !this.settingsDirty) return true;
+    this.discardPrompt = true;
+    this.cdr.markForCheck();
+    return new Promise<boolean>((resolve) => {
+      this.leaveDecision = resolve;
+    });
+  }
+  decideDiscard(discard: boolean): void {
+    this.discardPrompt = false;
+    if (discard) this.finishClose();
+    this.leaveDecision?.(discard);
+    this.leaveDecision = undefined;
+  }
 
   async ngOnInit(): Promise<void> {
     void this.admin.loadProducts(true);
@@ -67,6 +129,7 @@ export class AdminComponent implements OnInit {
     this.selectedFile = undefined;
     this.selectedPreview = '';
     this.showEditor = true;
+    this.originalDraft = JSON.stringify(this.draft);
     this.clearMessages();
   }
 
@@ -81,13 +144,23 @@ export class AdminComponent implements OnInit {
     this.selectedFile = undefined;
     this.selectedPreview = '';
     this.showEditor = true;
+    this.originalDraft = JSON.stringify(this.draft);
     this.clearMessages();
   }
 
   closeEditor(): void {
+    if (this.saving) return;
+    if (this.productDirty) {
+      this.discardPrompt = true;
+      return;
+    }
+    this.finishClose();
+  }
+  private finishClose(): void {
     this.showEditor = false;
     this.selectedFile = undefined;
     this.selectedPreview = '';
+    this.galleryFiles = [];
   }
 
   pickFile(event: Event): void {
@@ -98,7 +171,9 @@ export class AdminComponent implements OnInit {
     }
 
     const reader = new FileReader();
+    const selectedFile = this.selectedFile;
     reader.onload = () => {
+      if (this.selectedFile !== selectedFile) return;
       this.selectedPreview = typeof reader.result === 'string' ? reader.result : '';
       this.cdr.markForCheck();
     };
@@ -133,8 +208,21 @@ export class AdminComponent implements OnInit {
   }
 
   async saveProduct(): Promise<void> {
+    if (this.saving) return;
     if (!this.draft.id.trim() || !this.draft.name.trim()) {
       this.error = 'Product ID and name are required.';
+      return;
+    }
+    if (
+      !this.draft.description.trim() ||
+      typeof this.draft.price !== 'number' ||
+      !Number.isFinite(this.draft.price) ||
+      this.draft.price < 0 ||
+      !Number.isInteger(this.draft.quantity) ||
+      this.draft.quantity < 0
+    ) {
+      this.error =
+        'Add a description, a valid price and a whole available quantity of zero or more.';
       return;
     }
 
@@ -151,6 +239,7 @@ export class AdminComponent implements OnInit {
         ...settings,
         contacts: settings.contacts.map((contact) => ({ ...contact })),
       };
+      this.originalSettings = JSON.stringify(this.settingsDraft);
     }
   }
 
@@ -180,6 +269,7 @@ export class AdminComponent implements OnInit {
     }
     await this.runSave(async () => {
       await this.admin.saveSettings(this.settingsDraft!);
+      this.originalSettings = JSON.stringify(this.settingsDraft);
       this.notice = 'Store settings saved successfully.';
     });
   }

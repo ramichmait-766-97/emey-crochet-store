@@ -4,6 +4,8 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { CartService } from '../../services/cart.service';
 import { SiteSettingsService } from '../../services/site-settings.service';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
 
 @Component({
   selector: 'app-header',
@@ -15,6 +17,10 @@ import { SiteSettingsService } from '../../services/site-settings.service';
 })
 export class HeaderComponent {
   readonly auth = inject(AuthService);
+  readonly user = toSignal(this.auth.user$.pipe(catchError(() => of(null))));
+  get homeLink(): string {
+    return this.user()?.role === 'admin' ? '/admin/dashboard' : '/';
+  }
   readonly cart = inject(CartService);
   readonly settings = inject(SiteSettingsService);
   private readonly router = inject(Router);

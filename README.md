@@ -58,9 +58,9 @@ Avoid the legacy `firebase:deploy` command: it also deploys Functions and requir
 - Local product WebP files remain necessary for homepage artwork and recovery.
 - The cart keeps slim local data and reconciles current prices/stock. Checkout
   now reviews server totals, reserves stock transactionally and records an order
-  before an optional WhatsApp conversation. This local implementation is **not yet
-  deployed/configured**: it fails closed until the commerce Worker, secrets,
-  Turnstile, indexes and verified operating settings are ready. The existing live
+  before an optional WhatsApp conversation. The updated frontend is **not yet
+  deployed**. Commerce Worker/secrets and Firestore deployment are reported complete;
+  public connection settings are configured in source. Live checkout QA and verified operating settings remain pending. The existing live
   site's behavior has not been changed. See [COMMERCE.md](COMMERCE.md) for business
   requirements, journeys, schema, limits, tests and deployment instructions.
 - `/admin/settings` manages delivery/payment/holds; `/admin/orders` manages the
@@ -100,3 +100,9 @@ The maintained code map, history, verification record, and next steps live outsi
 the repository at `../emey-crochet-store-notes/PROJECT_MEMORY.md`. AGENTS.md instructs
 future tasks to read and update it. That sibling folder is not included in a Git
 push; copy it separately when moving to a different computer.
+
+Admin home is `/admin/dashboard`: bounded recent-order analytics with date/currency
+controls and explicit loaded-data scope. `/admin` retains products and store
+settings. Add/edit opens a responsive native modal with unsaved-change protection;
+admin routes share operational navigation. See UX-CONTRACT.md for analytics and
+editing behavior. PayPal and Stripe are planned, not connected payment methods.
